@@ -20,13 +20,15 @@
 | 5 | Giao thức tầng ứng dụng: HTTP và giao thức lệnh |
 | 6 | Bài tập tổng hợp và mở rộng |
 
+Bài thực hành này **không bắt buộc**: bạn làm theo tốc độ của mình và dừng ở phần nào cũng được. Các bước ghi *(Tùy chọn)* và Phần 6 dành cho ai muốn tìm hiểu thêm.
+
 ## Môi trường thực hành
 
-Mỗi máy tính phòng lab chạy **2 máy ảo Ubuntu Desktop** trong VMware, cùng được import từ một file `lab-mmt.ova` do mình cung cấp: một máy làm **server**, một máy làm **client**. Mỗi máy ảo có sẵn Java (JDK), VS Code và các công cụ mạng, nên mọi thao tác trong bài đều làm **bên trong máy ảo**, không cần Internet.
+Mỗi máy tính phòng lab chạy **2 máy ảo Ubuntu Desktop** trong VMware, cùng được import từ một file `lab-mmt.ova` do giảng viên cung cấp: một máy làm **server**, một máy làm **client**. Mỗi máy ảo có sẵn Java (JDK), VS Code và các công cụ mạng, nên mọi thao tác trong bài đều làm **bên trong máy ảo**, không cần Internet.
 
 **Tài khoản** trên cả hai máy ảo là `lab`, **mật khẩu** là `1` (mật khẩu dùng khi đăng nhập và khi lệnh `sudo` hỏi mật khẩu; lúc gõ mật khẩu trong Terminal, màn hình không hiện ký tự nào).
 
-Ví dụ (các thông tin như địa chỉ ip, tên network interface có thể khác với từng người)
+Sơ đồ ví dụ (địa chỉ IP và tên card mạng trên máy bạn có thể khác):
 
 ```text
                      Máy tính phòng lab (VMware)
@@ -50,7 +52,7 @@ Ví dụ (các thông tin như địa chỉ ip, tên network interface có thể
 - Trong tài liệu, `<server ip>` là IP của VM server, `<client ip>` là IP của VM client, và card mạng là `ens33`. **Khi gõ lệnh, hãy thay `<server ip>`, `<client ip>` bằng IP thật** bạn ghi lại ở Bước 0.3 (tên card mạng trên máy bạn cũng có thể khác `ens33`). Các con số trong kết quả mẫu (cổng của client, số thứ tự, thời gian, số phiên bản…) cũng sẽ khác.
 - Code dùng tiếng Việt không dấu để tránh lỗi mã hóa ký tự khi biên dịch và hiển thị.
 - Mỗi phần làm trong một thư mục riêng: `~/lab/bai1`, `~/lab/bai2`, …
-- Các bảng cần điền phải dùng số liệu trên **chính máy của bạn** (IP, cổng, số thứ tự…), không chép từ tài liệu hay từ máy khác.
+- Khi điền các bảng, dùng số liệu trên **chính máy của bạn** (IP, cổng, số thứ tự…); số liệu trong tài liệu chỉ là ví dụ.
 - Chỉ kết nối và bắt gói trong mạng thực hành. Không gõ mật khẩu thật vào các chương trình socket trong bài: dữ liệu đi qua mạng không được mã hóa.
 - Nếu Ubuntu hiện thông báo cập nhật phần mềm, bỏ qua: không cập nhật trong giờ thực hành.
 
@@ -67,13 +69,12 @@ Ví dụ (các thông tin như địa chỉ ip, tên network interface có thể
 **Thao tác** trong VMware:
 
 1. Chọn **File → Open…**, chọn file `.ova` do giảng viên cung cấp.
-2. Đặt tên máy ảo là `server`, chọn một thư mục lưu mới , rồi nhấn **Import**. Chờ cho tới khi import xong (vài phút).
+2. Đặt tên máy ảo là `server`, chọn một thư mục lưu mới, rồi nhấn **Import**. Chờ cho tới khi import xong (vài phút).
 
-    ![alt text](image-1.png)
+   ![Hộp thoại Import Virtual Machine: ô tên máy ảo (Name) và thư mục lưu (Storage path)](image-1.png)
 
-1. Làm lại bước 1–2 với tên `client` và **một thư mục lưu khác**.
-2. Bật cả hai máy ảo (**Power on this virtual machine**) và đăng nhập (mật khẩu `1`).
-
+3. Làm lại bước 1–2 với tên `client` và **một thư mục lưu khác**.
+4. Bật cả hai máy ảo (**Power on this virtual machine**) và đăng nhập (mật khẩu `1`).
 
 **Ghi chú:** Nếu VMware hỏi máy ảo đã được di chuyển (*moved*) hay sao chép (*copied*), chọn **I Copied It**, để mỗi máy ảo có địa chỉ MAC riêng.
 
@@ -81,7 +82,7 @@ Ví dụ (các thông tin như địa chỉ ip, tên network interface có thể
 
 **Mục đích:** hai máy ảo import từ cùng một file OVA có cùng hostname. Đặt tên `server` và `client` để dấu nhắc lệnh cho biết bạn đang gõ ở máy nào.
 
-**Cách làm:** Dung lenh `hostnamectl set-hostname` de đổi hostname. Ubuntu còn ghi hostname ở dòng `127.0.1.1` trong file `/etc/hosts`, nên mở file đó và sửa tên ở dòng này cho khớp tên mới.
+**Cách làm:** dùng lệnh `hostnamectl set-hostname` để đổi hostname. Ubuntu còn ghi hostname ở dòng `127.0.1.1` trong file `/etc/hosts`, nên mở file đó và sửa tên ở dòng này cho khớp tên mới.
 
 **Thao tác** trên VM server:
 
@@ -149,7 +150,7 @@ lo               UNKNOWN        00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP>
 ens33            UP             00:0c:29:3e:5a:11 <BROADCAST,MULTICAST,UP,LOWER_UP>
 ```
 
-Ghi lại vào note và dùng cho cả buổi:
+Ghi lại vào bảng sau và dùng cho cả buổi:
 
 | | VM server | VM client |
 |---|---|---|
@@ -195,6 +196,7 @@ rtt min/avg/max/mdev = 0.431/0.466/0.512/0.034 ms
 ```bash
 java -version
 javac -version
+for c in code nc ss ip tcpdump curl python3; do command -v "$c" > /dev/null || echo "missing: $c"; done
 mkdir -p ~/lab/bai1 ~/lab/bai2 ~/lab/bai3 ~/lab/bai4 ~/lab/bai5 ~/lab/bai6
 ```
 
@@ -498,7 +500,7 @@ Làm tương tự trên **[server-1]** với dòng `<client ip>   client`, rồi
 
 - **Câu 1.1.** Vì sao `HostInfo` in "IP theo hostname" là `127.0.1.1` chứ không phải IP của card `ens33`? (Gợi ý: xem `/etc/hosts`.) Muốn lấy IP thật của máy bằng Java thì dùng lớp nào?
 - **Câu 1.2.** Card loopback tên gì, có những địa chỉ nào? Vì sao `NicInfo` không in MAC cho card này?
-- **Câu 1.3.** Điền bảng sau cho cả hai máy ảo, dùng kết quả của `NicInfo`:
+- **Câu 1.3.** Điền bảng sau cho cả hai máy ảo, dùng kết quả của `hostname` và `NicInfo`:
 
   | Máy ảo | Hostname | Tên card | IPv4 | MAC |
   |---|---|---|---|---|
@@ -523,7 +525,7 @@ Làm tương tự trên **[server-1]** với dòng `<client ip>   client`, rồi
         v                                   v
      TCP / UDP                           TCP / UDP
         |                                   |
-        IP  <------------ mạng ------------>  IP
+        IP  <----------- mạng ----------->  IP
 ```
 
 Mỗi kết nối TCP được xác định duy nhất bởi **bộ 5 thông số**: giao thức, IP nguồn, cổng nguồn, IP đích, cổng đích. Phía server có hai loại socket:
@@ -609,7 +611,7 @@ ESTAB 0      0          127.0.0.1:46448    127.0.0.1:5000  users:(("nc",pid=501,
 
 - Hai dòng `ESTAB` là **hai đầu của cùng một kết nối**, vì cả hai chương trình chạy trên một máy: đầu server có cổng 5000, đầu client có cổng 46448 do hệ điều hành chọn. Hai đầu cùng IP `127.0.0.1` và được phân biệt bằng cổng.
 - Tùy chọn `-p` cho biết chương trình nào giữ socket (cột cuối).
-- `nc -l` chỉ phục vụ một kết nối: khi client thoát, server cũng thoát.
+- `nc -l` chỉ phục vụ một kết nối, không nhận thêm client nào khác. Khi một bên thoát, bên kia thường không tự thoát theo mà vẫn chờ bạn gõ tiếp: nhấn `Ctrl+C` để dừng.
 
 Điền bảng theo kết quả trên máy bạn:
 
@@ -1089,7 +1091,7 @@ ESTAB  15     0      [::ffff:<server ip>]:5000  [::ffff:<client ip>]:43392
 >>> Nhan Enter de sang buoc 7 (dong socket)
 ```
 
-**[server-2]** và **[client-1]** (client đã kết thúc nên cửa sổ đã trống):
+**[server-2]** và **[client-1]** (client đã kết thúc nên gõ lệnh được ở cửa sổ này):
 
 ```bash
 ss -tan 'sport = :5000'      # tren [server-2]
@@ -1178,7 +1180,7 @@ Exception in thread "main" java.net.BindException: Address already in use
 	...
 ```
 
-Mỗi cổng TCP chỉ cho một socket lắng nghe. Để biết chương trình nào đang giữ cổng, chạy `ss -tlnp 'sport = :5000'`: cột `Process` cho biết tên và PID (ví dụ `users:(("java",pid=2422,fd=5))`). Nhấn `Ctrl+C` ở cả hai cửa sổ để dừng.
+Mỗi cổng TCP chỉ cho một socket lắng nghe. Để biết chương trình nào đang giữ cổng, chạy `ss -tlnp 'sport = :5000'`: cột `Process` cho biết tên và PID (ví dụ `users:(("java",pid=2422,fd=5))`). Server thứ hai đã tự thoát vì lỗi; nhấn `Ctrl+C` ở **[server-1]** để dừng server thứ nhất.
 
 ### Câu hỏi và bài tập Phần 2
 
@@ -1397,7 +1399,7 @@ QUIT
 BYE
 ```
 
-Server trả `BYE` rồi đóng kết nối, nên `nc` cũng thoát.
+Server trả `BYE` rồi đóng kết nối. `nc` không tự thoát theo mà vẫn chờ bạn gõ tiếp: nhấn `Ctrl+C` để thoát.
 
 **b) EchoClient nói chuyện với netcat.** Ở **[server-1]**, nhấn `Ctrl+C` để dừng EchoServer, rồi cho netcat lắng nghe cổng 5000 trên mọi địa chỉ:
 
@@ -1437,7 +1439,7 @@ EchoClient không biết đầu kia là chương trình gì. Nó chỉ cần m�
 3. **[server-3]**: `sudo tcpdump -i ens33 -nn tcp port 5000`.
 4. **[client-1]**: lần lượt chạy `java EchoClient <server ip>` và `java EchoClient 127.0.0.1`.
 5. **[server-2]**: `cd ~/lab/bai3` rồi `java EchoClient 127.0.0.1`; gõ `hello`, rồi `QUIT`.
-6. **[server-1]**: nhấn `Ctrl+C`, chạy lại với `java EchoServer 5000 0.0.0.0`, rồi lặp lại bước 2 và 4.
+6. **[server-1]**: nhấn `Ctrl+C`, chạy lại với `java EchoServer 5000 0.0.0.0`, rồi lặp lại các bước 2, 4 và 5.
 
 **Kết quả** khi bind `127.0.0.1`:
 
@@ -1568,7 +1570,8 @@ listening on ens33, link-type EN10MB (Ethernet), snapshot length 262144 bytes
 **Đóng kết nối (gói 11–13):** server gửi FIN trước (ngay sau khi trả `BYE`), client gửi FIN của mình, server báo nhận. Mỗi chiều được đóng bằng một cặp FIN + ACK. Ở đây ACK của client gộp luôn vào gói FIN của nó, nên chỉ có 3 gói thay vì 4. Trên máy bạn, bên gửi FIN trước có thể khác.
 
 ```text
- client <client ip>:54416                            server <server ip>:5000
+ client                                                         server
+ <client ip>:54416                                     <server ip>:5000
     |  1  [S]  seq=ISN_c                              ---------->  |
     |  2  [S.] seq=ISN_s, ack=ISN_c+1                 <----------  |
     |  3  [.]  ack 1                                  ---------->  |  ESTABLISHED
@@ -1584,28 +1587,28 @@ listening on ens33, link-type EN10MB (Ethernet), snapshot length 262144 bytes
     | 13  [.]  ack 13                                 <----------  |
 ```
 
-**Lưu gói tin ra file để nộp bài.** Thay vì đọc ngay trên màn hình, ghi gói tin ra file `.pcap` rồi đọc lại. Đặt tên file theo mã số sinh viên (MSSV) của bạn.
+**Lưu gói tin ra file để xem lại.** Thay vì đọc ngay trên màn hình, ghi gói tin ra file `.pcap` rồi đọc lại bao nhiêu lần cũng được.
 
 **[server-2]** (EchoServer đang chạy ở **[server-1]**):
 
 ```bash
 cd ~/lab/bai3
-sudo tcpdump -i ens33 -nn -s 0 -w tcp-MSSV.pcap tcp port 5000
+sudo tcpdump -i ens33 -nn -s 0 -w tcp.pcap tcp port 5000
 ```
 
-**[client-1]**: chạy `java EchoClient <server ip>`, gõ `MSSV: <mã số của bạn>`, rồi `QUIT`. Quay lại **[server-2]**, nhấn `Ctrl+C`, rồi đọc file (đọc file không cần `sudo`):
+**[client-1]**: chạy `java EchoClient <server ip>`, gõ một dòng bất kỳ (ví dụ `xin chao file pcap`), rồi `QUIT`. Quay lại **[server-2]**, nhấn `Ctrl+C`, rồi đọc file (đọc file không cần `sudo`):
 
 ```bash
-tcpdump -nn -r tcp-MSSV.pcap
-tcpdump -nn -A -r tcp-MSSV.pcap
-tcpdump -nn -r tcp-MSSV.pcap 'tcp[tcpflags] & tcp-syn != 0'
+tcpdump -nn -# -r tcp.pcap
+tcpdump -nn -A -r tcp.pcap
+tcpdump -nn -r tcp.pcap 'tcp[tcpflags] & tcp-syn != 0'
 ```
 
-- `-w` ghi gói tin ra file, `-r` đọc lại từ file; `-s 0` lấy trọn mỗi gói tin.
+- `-w` ghi gói tin ra file, `-r` đọc lại từ file; `-s 0` lấy trọn mỗi gói tin; `-#` đánh số các gói khi đọc lại.
 - Bộ lọc `'tcp[tcpflags] & tcp-syn != 0'` chỉ giữ các gói có cờ SYN, tức là gói `[S]` và `[S.]`.
-- (Tùy chọn) Nếu máy ảo có cài Wireshark, mở file bằng `wireshark tcp-MSSV.pcap &` để xem từng trường của mỗi gói tin (bộ lọc hiển thị: xem Phụ lục A).
+- (Tùy chọn) Nếu máy ảo có cài Wireshark, mở file bằng `wireshark tcp.pcap &` để xem từng trường của mỗi gói tin (bộ lọc hiển thị: xem Phụ lục A).
 
-Điền bảng từ file của bạn (ghi số thứ tự dòng trong kết quả của `tcpdump -nn -r`):
+Điền bảng từ file của bạn (ghi số thứ tự gói, tức cột số ở bên trái trong kết quả của `tcpdump -nn -# -r`):
 
 | Nội dung | Kết quả |
 |---|---|
@@ -1656,8 +1659,8 @@ Cột đầu là vị trí byte (hex), tiếp theo là 16 byte mỗi dòng, cộ
 | 6–7 | `4000` | Flags, Fragment Offset | cờ DF (không phân mảnh) |
 | 8 | `40` | TTL | 64 |
 | 9 | `06` | Protocol | 6 = TCP |
-| 12–15 | `c0a8 9d81` | IP nguồn | `<client ip>` (mỗi byte hex là một số của IP: `c0` = 192, `a8` = 168, …) |
-| 16–19 | `c0a8 9d80` | IP đích | `<server ip>` |
+| 12–15 | `c0a8 9d81` | IP nguồn | `<client ip>`, trong ví dụ này là 192.168.157.129 (mỗi byte hex là một số của IP: `c0` = 192, `a8` = 168, `9d` = 157, `81` = 129) |
+| 16–19 | `c0a8 9d80` | IP đích | `<server ip>`, trong ví dụ này là 192.168.157.128 |
 | **Header TCP** (32 byte) | | | |
 | 20–21 | `d490` | Cổng nguồn | 54416 |
 | 22–23 | `1388` | Cổng đích | 5000 |
@@ -1738,7 +1741,7 @@ Lần này việc đóng kết nối có đủ 4 gói. Server dừng chờ Enter
 
 1. **[server-1]**: nhấn `Ctrl+C` để dừng chương trình server, nếu đang chạy.
 2. **[server-2]**: chạy `sudo tcpdump -i ens33 -nn tcp port 5000`.
-3. **[client-1]**: chạy `java EchoClient <server ip>`.
+3. **[client-1]**: `cd ~/lab/bai3` (Bước 3.8 đã chuyển sang `~/lab/bai2`), rồi chạy `java EchoClient <server ip>`.
 
 **Kết quả** trên **[client-1]**:
 
@@ -1978,9 +1981,9 @@ Trong lúc hai client đang kết nối, `ss -tan 'sport = :5000'` cho thấy ha
 - **Câu 3.9.** Vì sao một lần `write()` không nhất thiết tạo ra đúng một segment TCP? (Gợi ý: Bài 2.8, Bài 6B.)
 - **Câu 3.10.** Ở Bước 3.4, vì sao `nc` (viết bằng C) và chương trình Java nói chuyện được với nhau? Ở Bước 3.5, giải thích bảng kết quả bạn đã điền.
 - **Bài 3.11.** Viết `PoolEchoServer`: thay `new Thread(...)` bằng một thread pool 2 luồng (`ExecutorService pool = Executors.newFixedThreadPool(2);` rồi `pool.execute(...)`). Cho 3 client kết nối cùng lúc. Client thứ 3 thế nào, khi nào nó được phục vụ? Giải thích.
-- **Bài 3.12.** Sửa `MultiEchoServer` thành `MultiEchoServer2`: đánh số các client bằng một `AtomicInteger`, và trả lời `ECHO #<n>: ...` với `n` là tổng số thông điệp server đã xử lý (của mọi client). Cho hai client gửi xen kẽ và quan sát số thứ tự.
+- **Bài 3.12.** Sửa `MultiEchoServer` thành `MultiEchoServer2`: dùng một biến `static AtomicInteger` đếm tổng số thông điệp server đã xử lý (của mọi client), và trả lời `ECHO #<n>: ...` với `n` là giá trị bộ đếm sau khi tăng. Cho hai client gửi xen kẽ và quan sát số thứ tự.
 
-**Kết quả cần có của Phần 3:** file `tcp-MSSV.pcap`, bảng phân tích ở Bước 3.6, output `tcpdump -nn -A -r tcp-MSSV.pcap`, bảng ở Bước 3.5 và Bước 3.12, câu trả lời các câu hỏi.
+**Tự kiểm tra Phần 3:** bạn đã điền được bảng ở Bước 3.5, Bước 3.6 (từ file `tcp.pcap`) và Bước 3.12, và trả lời được các câu hỏi trên.
 
 ---
 
@@ -2339,7 +2342,7 @@ sudo tcpdump -i ens33 -nn -X udp port 6000
 
 Một lần hỏi–đáp chỉ có **2 gói**, không có SYN, FIN hay ACK.
 
-**Lưu file để nộp bài:** ở **[server-2]**, trong `~/lab/bai4`, chạy `sudo tcpdump -i ens33 -nn -s 0 -w udp-MSSV.pcap 'udp port 6000 or icmp'`. Gửi một thông điệp có MSSV của bạn từ client, dừng tcpdump, rồi đọc lại bằng `tcpdump -nn -A -r udp-MSSV.pcap`.
+**Thử thêm: lưu ra file.** Ở **[server-2]**, trong `~/lab/bai4`, chạy `sudo tcpdump -i ens33 -nn -s 0 -w udp.pcap 'udp port 6000 or icmp'`. Gửi vài thông điệp từ client, dừng tcpdump, rồi đọc lại bằng `tcpdump -nn -A -r udp.pcap`.
 
 ### Bước 4.6 – Khi server không chạy
 
@@ -2409,7 +2412,7 @@ Trên tcpdump: lúc chương trình gọi `connect()` không có gói nào; ch�
 
 ### Bước 4.8 – Ứng dụng không trả lời: thông điệp `DROP`
 
-**Mục đích:** phân biệt "server không chạy" với "server đang chạy nhưng không trả lời", là hai tình huống mà client UDP nhìn thấy giống hệt nhau.
+**Mục đích:** phân biệt "server không chạy" với "server đang chạy nhưng không trả lời". Với client chưa `connect` (Bước 4.6), hai tình huống này trông giống hệt nhau: chỉ thấy hết thời gian chờ.
 
 **Cách làm:** sửa UdpServer để bỏ qua (không trả lời) thông điệp `DROP`: thêm một dòng ngay sau dòng `System.out.println("Nhan " + ...)`:
 
@@ -2487,7 +2490,7 @@ sudo tc qdisc del dev ens33 root
 - **Bài 4.9 (ranh giới thông điệp).** Viết `UdpBurstClient` gửi liền ba datagram `mot`, `hai`, `ba` (không chờ trả lời), và `UdpSlowServer` bind cổng 6000, ngủ 10 giây (`Thread.sleep(10000)`) rồi mới gọi `receive()` ba lần. Mỗi lần `receive()` nhận được gì? So sánh với Bài 2.8 (TCP).
 - **Bài 4.10 (UDP ping).** Viết `UdpPing` gửi 10 datagram `PING 1` … `PING 10` tới UdpServer, mỗi lần chờ trả lời tối đa 1 giây, đo thời gian khứ hồi (RTT) bằng `System.nanoTime()`, cuối cùng in số gói đã gửi, đã nhận và tỉ lệ mất gói. Chạy khi server bật, khi server tắt và (tùy chọn) khi bật netem ở Bước 4.10.
 
-**Kết quả cần có của Phần 4:** file `udp-MSSV.pcap`, bảng ở Bước 4.8, câu trả lời các câu hỏi.
+**Tự kiểm tra Phần 4:** bạn đã điền được bảng ở Bước 4.8 và trả lời được các câu hỏi trên.
 
 ---
 
@@ -2636,13 +2639,13 @@ printf 'GET / HTTP/1.0\r\n\r\n' | nc <server ip> 8080
 
 ```bash
 cd ~/lab/bai5
-sudo tcpdump -i ens33 -nn -s 0 -w http-MSSV.pcap tcp port 8080
+sudo tcpdump -i ens33 -nn -s 0 -w http.pcap tcp port 8080
 ```
 
 **[client-1]**: chạy lại `java RawHttpClient <server ip> 8080 /`. Dừng tcpdump bằng `Ctrl+C`, rồi đọc file:
 
 ```bash
-tcpdump -nn -A -r http-MSSV.pcap
+tcpdump -nn -A -r http.pcap
 ```
 
 **Kết quả** (đã bỏ các dòng ký tự rác của header IP/TCP, chỉ giữ các gói có dữ liệu và các gói FIN):
@@ -2683,7 +2686,7 @@ Last-Modified: Thu, 26 Nov 2026 02:29:40 GMT
 | `Content-Length` | |
 | Nội dung phần thân | |
 
-**Thử thêm: bỏ dòng trống cuối request.** Trong `RawHttpClient.java`, xóa dòng `+ "\r\n";` cuối cùng, rồi thêm dấu `;` vào cuối dòng `Connection` để câu lệnh kết thúc ở đó: `+ "Connection: close\r\n";`. Biên dịch, chạy lại. Server chưa trả lời vì còn chờ hết phần header; sau 5 giây client báo `java.net.SocketTimeoutException: Read timed out`. Khi client đóng kết nối, Python mới xử lý request và ghi lỗi `BrokenPipeError` vào log, vì không còn ai nhận response. Khôi phục code sau khi thử.
+**Thử thêm: bỏ dòng trống cuối request.** Trong `RawHttpClient.java`, xóa dòng `+ "\r\n";` cuối cùng, rồi thêm dấu `;` vào cuối dòng `Connection` để câu lệnh kết thúc ở đó: `+ "Connection: close\r\n";`. Biên dịch, chạy lại. Server chưa trả lời vì còn chờ hết phần header; sau 5 giây client báo `java.net.SocketTimeoutException: Read timed out`. Khi client đóng kết nối, Python mới coi như đã hết phần header, xử lý request và gửi response, nhưng client không còn nhận nữa, nên log của server có thể kèm lỗi `BrokenPipeError`. Khôi phục code sau khi thử.
 
 ### Bước 5.4 – Giao thức lệnh: đặc tả
 
@@ -2925,13 +2928,13 @@ Cửa sổ server ghi từng lệnh và câu trả lời, ví dụ `[<client ip>
 - **Bài 5.7.** Bổ sung `SUB`, `MUL`, `DIV` vào CommandServer (tạo `CommandServer2`). Hai toán hạng là số nguyên 32 bit; `SUB`/`MUL` trả kết quả `long`, `DIV` trả `double` và trả `ERR DIV_ZERO` khi chia cho 0. Ví dụ `SUB 2 7` → `OK -5`, `MUL -3 4` → `OK -12`, `DIV 7 2` → `OK 3.5`. Kiểm tra sai số lượng tham số, số sai, khoảng trắng thừa, lệnh không tồn tại. Server phải chạy tiếp sau mỗi lỗi, và sau `QUIT` vẫn nhận được client mới.
 - **Bài 5.8.** CommandServer phục vụ lần lượt từng client, giống EchoServer. Viết `MultiCommandServer` theo cách làm của MultiEchoServer (Bước 3.13): mỗi client được phục vụ bởi một luồng riêng. Nếu đặt file cùng thư mục với `CommandServer.java`, có thể gọi lại `CommandServer.serve(s)` thay vì chép lại code. Mở hai CommandClient cùng lúc ở **[client-1]** và **[client-2]**, so sánh với CommandServer: client thứ hai nhận dòng chào lúc nào?
 
-**Kết quả cần có của Phần 5:** output của RawHttpClient, file `http-MSSV.pcap` và bảng ở Bước 5.3, log kiểm thử giao thức lệnh với đủ các trường hợp, code Bài 5.7.
+**Tự kiểm tra Phần 5:** RawHttpClient in được response; bạn đã điền được bảng ở Bước 5.3 (từ file `http.pcap`); CommandServer trả lời đúng mọi trường hợp ở Bước 5.4; và trả lời được các câu hỏi trên.
 
 ---
 
 ## Phần 6. Bài tập tổng hợp và mở rộng (chọn một hoặc hai)
 
-Làm trong thư mục `~/lab/bai6`. Nộp mã nguồn kèm ảnh chụp hoặc đoạn output chứng minh chương trình chạy được giữa hai máy ảo.
+Làm trong thư mục `~/lab/bai6`. Một bài coi là xong khi chương trình chạy được giữa hai máy ảo: server trên VM server, client trên VM client.
 
 ### Bài 6A – Chat hai chiều qua TCP
 
@@ -3000,7 +3003,7 @@ String message = new String(data, StandardCharsets.UTF_8);
 - Không dùng chung `BufferedReader` và `DataInputStream` trên cùng một luồng vào.
 - Độ dài là **số byte**, không phải số ký tự: `"Xin chào".length()` là 8 nhưng chuỗi đó chiếm 9 byte UTF-8. Nếu không gõ được chữ có dấu, viết bằng mã Unicode trong chuỗi Java như ví dụ trên (`\u00e0` là "à").
 
-**Kết quả cần có:** code; capture `-X` chỉ ra 4 byte độ dài đứng trước nội dung mỗi frame (ví dụ `0000 0009`); giải thích vì sao phải đếm byte thay vì dùng `String.length()`.
+**Tự kiểm tra:** trong capture `-X`, chỉ ra được 4 byte độ dài đứng trước nội dung mỗi frame (ví dụ `0000 0009`); giải thích được vì sao phải đếm byte thay vì dùng `String.length()`.
 
 ### Bài 6D – Tự viết một HTTP server nhỏ
 
@@ -3063,14 +3066,14 @@ Bắt gói bằng tcpdump như Bước 5.3 và so sánh với response của ser
 | `sudo tcpdump -i ens33 -nn -X udp port 6000` | in nội dung dạng hex và ASCII |
 | `sudo tcpdump -i ens33 -nn -e 'arp or tcp port 5000'` | in cả địa chỉ MAC, bắt thêm gói ARP |
 | `sudo tcpdump -i ens33 -nn 'udp port 6000 or icmp'` | bắt UDP và ICMP |
-| `sudo tcpdump -i ens33 -nn -s 0 -w tcp-MSSV.pcap tcp port 5000` | ghi trọn các gói ra file `.pcap` thay vì in ra màn hình |
-| `tcpdump -nn -r tcp-MSSV.pcap` | đọc lại file đã ghi (không cần `sudo`) |
-| `tcpdump -nn -r tcp-MSSV.pcap 'tcp[tcpflags] & tcp-syn != 0'` | chỉ in các gói có cờ SYN |
+| `sudo tcpdump -i ens33 -nn -s 0 -w tcp.pcap tcp port 5000` | ghi trọn các gói ra file `.pcap` thay vì in ra màn hình |
+| `tcpdump -nn -r tcp.pcap` | đọc lại file đã ghi (không cần `sudo`) |
+| `tcpdump -nn -r tcp.pcap 'tcp[tcpflags] & tcp-syn != 0'` | chỉ in các gói có cờ SYN |
 | `sudo tcpdump -i lo -nn tcp port 5000` | bắt gói trên loopback (client và server cùng một máy) |
 | `sudo tcpdump -i any -nn tcp port 5000` | bắt trên mọi card, khi chưa chắc tên card |
 | `sudo tcpdump -D` | liệt kê các card mạng có thể bắt gói |
 
-Nếu máy ảo có Wireshark, có thể mở file `.pcap` bằng `wireshark tcp-MSSV.pcap` và dùng các bộ lọc hiển thị như `tcp.port == 5000`, `tcp.flags.syn == 1`, `tcp.len > 0`, `tcp.flags.fin == 1`.
+Nếu máy ảo có Wireshark, có thể mở file `.pcap` bằng `wireshark tcp.pcap` và dùng các bộ lọc hiển thị như `tcp.port == 5000`, `tcp.flags.syn == 1`, `tcp.len > 0`, `tcp.flags.fin == 1`.
 
 ### Netcat, curl và HTTP server có sẵn
 
