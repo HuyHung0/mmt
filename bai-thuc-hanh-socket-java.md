@@ -12,7 +12,7 @@
 
 | Phần | Nội dung |
 |---|---|
-| 0 | Chuẩn bị môi trường: hai máy ảo, VS Code, Terminal |
+| 0 | Chuẩn bị môi trường: hai máy ảo, mạng, Java |
 | 1 | Ôn Java: biên dịch, chạy, thông tin mạng |
 | 2 | Socket API từng bước (có netcat) |
 | 3 | Client–server TCP và tcpdump |
@@ -24,7 +24,10 @@
 
 Mỗi máy tính phòng lab chạy **2 máy ảo Ubuntu Desktop** trong VMware, cùng được import từ một file `lab-mmt.ova` do mình cung cấp: một máy làm **server**, một máy làm **client**. Mỗi máy ảo có sẵn Java (JDK), VS Code và các công cụ mạng, nên mọi thao tác trong bài đều làm **bên trong máy ảo**, không cần Internet.
 
+**Tài khoản** trên cả hai máy ảo là `lab`, **mật khẩu** là `1` (mật khẩu dùng khi đăng nhập và khi lệnh `sudo` hỏi mật khẩu; lúc gõ mật khẩu trong Terminal, màn hình không hiện ký tự nào).
+
 Ví dụ (các thông tin như địa chỉ ip, tên network interface có thể khác với từng người)
+
 ```text
                      Máy tính phòng lab (VMware)
  +--------------------------------------------------------------------+
@@ -32,7 +35,7 @@ Ví dụ (các thông tin như địa chỉ ip, tên network interface có thể
  |  | VM server                |        | VM client                |  |
  |  | Ubuntu Desktop           |        | Ubuntu Desktop           |  |
  |  | Terminal, VS Code        |        | Terminal, VS Code        |  |
- |  | ens33: 192.168.47.132    |        | ens33: 192.168.47.140    |  |
+ |  | ens33: <server ip>       |        | ens33: <client ip>       |  |
  |  +-------------+------------+        +-------------+------------+  |
  |                |                                   |               |
  |  ==============+======== mạng NAT của VMware ======+=============  |
@@ -41,12 +44,10 @@ Ví dụ (các thông tin như địa chỉ ip, tên network interface có thể
 
 ### Quy ước trong tài liệu
 
-- Nhãn đứng trước mỗi khối lệnh cho biết gõ lệnh ở cửa sổ Terminal nào (cách mở ở Bước 0.6):
-  - **[server-1]**: Terminal chính trên VM server, dùng để chạy chương trình server.
-  - **[server-2]**: Terminal thứ hai trên VM server, dùng để chạy `ss` và `tcpdump`.
-  - **[server-3]**: Terminal thứ ba trên VM server, chỉ mở khi bài yêu cầu (ví dụ thử netcat trên cùng một máy).
+- Nhãn đứng trước mỗi khối lệnh cho biết gõ lệnh ở cửa sổ Terminal nào; mỗi nhãn là một Terminal riêng:
+  - **[server-1]**, **[server-2]**: các Terminal trên VM server.
   - **[client-1]**, **[client-2]**: các Terminal trên VM client.
-- Ví dụ trong tài liệu dùng IP `192.168.157.128` cho server, `192.168.157.129` cho client và card mạng `ens33`. **Máy của bạn sẽ khác**: hãy thay bằng giá trị bạn ghi lại ở Bước 0.3. Các con số trong kết quả mẫu (cổng của client, số thứ tự, thời gian, số phiên bản…) cũng sẽ khác.
+- Trong tài liệu, `<server ip>` là IP của VM server, `<client ip>` là IP của VM client, và card mạng là `ens33`. **Khi gõ lệnh, hãy thay `<server ip>`, `<client ip>` bằng IP thật** bạn ghi lại ở Bước 0.3 (tên card mạng trên máy bạn cũng có thể khác `ens33`). Các con số trong kết quả mẫu (cổng của client, số thứ tự, thời gian, số phiên bản…) cũng sẽ khác.
 - Code dùng tiếng Việt không dấu để tránh lỗi mã hóa ký tự khi biên dịch và hiển thị.
 - Mỗi phần làm trong một thư mục riêng: `~/lab/bai1`, `~/lab/bai2`, …
 - Các bảng cần điền phải dùng số liệu trên **chính máy của bạn** (IP, cổng, số thứ tự…), không chép từ tài liệu hay từ máy khác.
@@ -55,7 +56,7 @@ Ví dụ (các thông tin như địa chỉ ip, tên network interface có thể
 
 ---
 
-## Phần 0. Chuẩn bị môi trường (25 phút)
+## Phần 0. Chuẩn bị môi trường
 
 ### Bước 0.1 – Import hai máy ảo từ file OVA
 
@@ -66,46 +67,69 @@ Ví dụ (các thông tin như địa chỉ ip, tên network interface có thể
 **Thao tác** trong VMware:
 
 1. Chọn **File → Open…**, chọn file `.ova` do giảng viên cung cấp.
-2. Đặt tên máy ảo là `server`, chọn một thư mục lưu mới (theo hướng dẫn của giảng viên), rồi nhấn **Import**. Chờ cho tới khi import xong (vài phút).
-3. Làm lại bước 1–2 với tên `client` và **một thư mục lưu khác**.
-4. Bật cả hai máy ảo (**Power on this virtual machine**) và đăng nhập bằng tài khoản giảng viên cung cấp.
+2. Đặt tên máy ảo là `server`, chọn một thư mục lưu mới , rồi nhấn **Import**. Chờ cho tới khi import xong (vài phút).
 
-> **Mẹo**
-> - Mỗi máy ảo hiện trong một tab (hoặc một cửa sổ) của VMware. Nhấp chuột vào màn hình máy ảo để gõ phím vào máy đó; nhấn `Ctrl+Alt` để trả chuột và bàn phím về máy thật.
-> - Nếu VMware báo file OVA không đạt kiểm tra chuẩn OVF và đề nghị thử lại, nhấn **Retry**.
-> - Nếu VMware hỏi máy ảo đã được di chuyển (*moved*) hay sao chép (*copied*), chọn **I Copied It**, để mỗi máy ảo có địa chỉ MAC riêng.
+    ![alt text](image-1.png)
+
+1. Làm lại bước 1–2 với tên `client` và **một thư mục lưu khác**.
+2. Bật cả hai máy ảo (**Power on this virtual machine**) và đăng nhập (mật khẩu `1`).
+
+
+**Ghi chú:** Nếu VMware hỏi máy ảo đã được di chuyển (*moved*) hay sao chép (*copied*), chọn **I Copied It**, để mỗi máy ảo có địa chỉ MAC riêng.
 
 ### Bước 0.2 – Đặt hostname cho từng máy ảo
 
-**Mục đích:** hai máy ảo import từ cùng một file OVA có cùng hostname. Đặt tên `server` và `client` để dấu nhắc lệnh cho biết bạn đang gõ ở máy nào; Phần 1 cũng cần hai tên khác nhau.
+**Mục đích:** hai máy ảo import từ cùng một file OVA có cùng hostname. Đặt tên `server` và `client` để dấu nhắc lệnh cho biết bạn đang gõ ở máy nào.
 
-**Cách làm:** mở Terminal bằng `Ctrl+Alt+T` (hoặc bấm nút **Show Apps** ở góc dưới bên trái, tìm **Terminal**). Lệnh `hostnamectl set-hostname` đổi hostname. Ubuntu còn ghi hostname ở dòng `127.0.1.1` trong file `/etc/hosts`; lệnh `sed -i` sửa dòng đó cho khớp tên mới. Cả hai lệnh cần quyền root nên dùng `sudo` (nhập mật khẩu tài khoản của bạn; khi gõ mật khẩu, màn hình không hiện ký tự nào).
+**Cách làm:** Dung lenh `hostnamectl set-hostname` de đổi hostname. Ubuntu còn ghi hostname ở dòng `127.0.1.1` trong file `/etc/hosts`, nên mở file đó và sửa tên ở dòng này cho khớp tên mới.
 
-**Lệnh** trên VM server:
+**Thao tác** trên VM server:
 
-```bash
-sudo hostnamectl set-hostname server
-sudo sed -i 's/^127\.0\.1\.1.*/127.0.1.1\tserver/' /etc/hosts
-hostname
-grep 127.0.1.1 /etc/hosts
-```
+1. Đổi hostname:
 
-Trên VM client, làm y hệt nhưng thay `server` bằng `client` ở hai lệnh đầu.
+   ```bash
+   sudo hostnamectl set-hostname server
+   ```
 
-**Kết quả** trên VM server:
+2. Mở file `/etc/hosts` bằng trình soạn thảo `nano`:
+
+   ```bash
+   sudo nano /etc/hosts
+   ```
+
+3. Tìm dòng bắt đầu bằng `127.0.1.1` (thường là dòng thứ hai). Dùng phím mũi tên đưa con trỏ tới cuối dòng, xóa tên cũ rồi gõ `server`. Dòng đó trở thành:
+
+   ```text
+   127.0.1.1	server
+   ```
+
+   Không sửa các dòng khác. Nếu file chưa có dòng `127.0.1.1`, thêm dòng trên ngay dưới dòng `127.0.0.1 localhost`.
+
+4. Lưu bằng `Ctrl+O` rồi `Enter`, thoát bằng `Ctrl+X`.
+
+5. Kiểm tra:
+
+   ```bash
+   hostname
+   grep 127.0.1.1 /etc/hosts
+   ```
+
+Trên VM client, làm y hệt nhưng thay `server` bằng `client` ở bước 1 và bước 3.
+
+**Kết quả** của bước 5 trên VM server:
 
 ```text
 server
 127.0.1.1	server
 ```
 
-Đóng Terminal và mở lại: dấu nhắc lệnh đổi thành dạng `<tài khoản>@server:~$`. Nếu `grep` không in gì, báo giảng viên.
+Đóng Terminal và mở lại: dấu nhắc lệnh đổi thành `lab@server:~$`.
 
 ### Bước 0.3 – Xem địa chỉ IP và MAC
 
 **Mục đích:** biết IP, MAC và tên card mạng của hai máy ảo; client cần IP của server để kết nối.
 
-**Cách làm:** dùng lệnh `ip` (gói iproute2). Tùy chọn `-br` in gọn mỗi card một dòng, `-4` chỉ in IPv4; `ip -br link` in địa chỉ MAC.
+**Cách làm:** dùng lệnh `ip`. Tùy chọn `-br` in gọn mỗi card một dòng, `-4` chỉ in IPv4; `ip -br link` in địa chỉ MAC.
 
 **Lệnh** (gõ trên cả hai máy ảo):
 
@@ -118,12 +142,14 @@ ip -br link
 
 ```text
 lo               UNKNOWN        127.0.0.1/8
-ens33            UP             192.168.157.128/24
+ens33            UP             <server ip>/24
+```
+```text
 lo               UNKNOWN        00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP>
 ens33            UP             00:0c:29:3e:5a:11 <BROADCAST,MULTICAST,UP,LOWER_UP>
 ```
 
-Ghi lại vào bảng sau và dùng cho cả buổi:
+Ghi lại vào note và dùng cho cả buổi:
 
 | | VM server | VM client |
 |---|---|---|
@@ -142,18 +168,18 @@ Hai máy ảo phải có IP khác nhau và MAC khác nhau. Nếu trùng, xem Ph�
 **Lệnh** trên VM client:
 
 ```bash
-ping -c 3 192.168.157.128
+ping -c 3 <server ip>
 ```
 
 **Kết quả:**
 
 ```text
-PING 192.168.157.128 (192.168.157.128) 56(84) bytes of data.
-64 bytes from 192.168.157.128: icmp_seq=1 ttl=64 time=0.512 ms
-64 bytes from 192.168.157.128: icmp_seq=2 ttl=64 time=0.431 ms
-64 bytes from 192.168.157.128: icmp_seq=3 ttl=64 time=0.455 ms
+PING <server ip> (<server ip>) 56(84) bytes of data.
+64 bytes from <server ip>: icmp_seq=1 ttl=64 time=0.512 ms
+64 bytes from <server ip>: icmp_seq=2 ttl=64 time=0.431 ms
+64 bytes from <server ip>: icmp_seq=3 ttl=64 time=0.455 ms
 
---- 192.168.157.128 ping statistics ---
+--- <server ip> ping statistics ---
 3 packets transmitted, 3 received, 0% packet loss, time 2034ms
 rtt min/avg/max/mdev = 0.431/0.466/0.512/0.034 ms
 ```
@@ -169,9 +195,6 @@ rtt min/avg/max/mdev = 0.431/0.466/0.512/0.034 ms
 ```bash
 java -version
 javac -version
-for tool in code ip ss ping nc tcpdump curl python3; do
-    command -v "$tool" >/dev/null || echo "missing: $tool"
-done
 mkdir -p ~/lab/bai1 ~/lab/bai2 ~/lab/bai3 ~/lab/bai4 ~/lab/bai5 ~/lab/bai6
 ```
 
@@ -180,64 +203,15 @@ Vòng `for` không in gì nghĩa là đủ công cụ. Nếu có dòng `missing:
 **Kết quả** (số phiên bản trên máy bạn có thể khác):
 
 ```text
-openjdk version "21.0.13" 2026-10-20
+openjdk version "21.0.13.1" 2026-10-20
 OpenJDK Runtime Environment (...)
 OpenJDK 64-Bit Server VM (..., mixed mode, sharing)
-javac 21.0.13
+javac 21.0.13.1
 ```
-
-### Bước 0.6 – Mở VS Code, các cửa sổ Terminal và tài liệu
-
-**Mục đích:** soạn code bằng VS Code, chạy lệnh trong nhiều Terminal cùng lúc, và copy code từ tài liệu ngay trong máy ảo.
-
-**Cách làm:**
-- **VS Code:** lệnh `code ~/lab` mở thư mục `~/lab` trong VS Code. Lần đầu, nếu VS Code hỏi có tin tưởng tác giả của thư mục không, chọn **Yes, I trust the authors**. Nếu VS Code gợi ý cài extension cho Java, bỏ qua: bài này chỉ cần soạn code và biên dịch bằng `javac`.
-- **Tạo và mở file:** trong Terminal, đứng ở thư mục của phần đang làm rồi gõ `code Ten.java`: file mở ra trong VS Code (chưa có thì tạo mới). Dán code, lưu bằng `Ctrl+S`. Tab của file chưa lưu có dấu ● cạnh tên; lỗi hay gặp nhất là quên lưu trước khi biên dịch. Có thể bật **File → Auto Save** để VS Code tự lưu.
-- **Nhiều Terminal:** trong cửa sổ Terminal, `Ctrl+Shift+T` mở thêm một tab, `Ctrl+PageUp` / `Ctrl+PageDown` chuyển tab. Trên VM server, mở 2 tab: **[server-1]** và **[server-2]**; mở thêm **[server-3]** khi bài yêu cầu. Trên VM client, mở 1 tab: **[client-1]**. Cũng có thể dùng Terminal bên trong VS Code (`` Ctrl+` ``) và chia đôi nó bằng `Ctrl+Shift+5`.
-- **Tài liệu:** mở tài liệu này **ngay trong máy ảo**, để copy code mà không phải gõ lại. Nếu giảng viên đã chép sẵn file `.md` vào máy ảo (ví dụ `~/lab/bai-thuc-hanh-socket-java.md`), mở nó trong VS Code rồi nhấn `Ctrl+Shift+V` để xem bản đã định dạng; bôi đen đoạn code, `Ctrl+C` để copy.
-
-**Lệnh:**
-
-**[server-1]** và **[client-1]**
-
-```bash
-code ~/lab
-```
-
-> **Mẹo**
-> - Dấu nhắc lệnh `...@server` hay `...@client` cho biết bạn đang ở máy nào. Luôn nhìn dấu nhắc trước khi gõ lệnh.
-> - Trong Terminal, copy là `Ctrl+Shift+C`, dán là `Ctrl+Shift+V` (`Ctrl+C` là **dừng chương trình**, không phải copy).
-> - Nếu VS Code chạy chậm, có thể soạn code bằng `nano Ten.java`: dán bằng `Ctrl+Shift+V`, lưu bằng `Ctrl+O` rồi `Enter`, thoát bằng `Ctrl+X`.
-
-### Ghi nhớ: phím tắt
-
-| Thao tác trong VS Code | Phím / lệnh |
-|---|---|
-| Mở thư mục làm việc từ Terminal | `code ~/lab` |
-| Mở (hoặc tạo) một file từ Terminal | `code Ten.java` |
-| Lưu file | `Ctrl+S` |
-| Xem file Markdown đã định dạng | `Ctrl+Shift+V` |
-| Nhảy tới dòng số … | `Ctrl+G` |
-| Tìm kiếm | `Ctrl+F` |
-| Hoàn tác | `Ctrl+Z` |
-| Bật/tắt Terminal bên trong VS Code | `` Ctrl+` `` |
-| Chia đôi Terminal bên trong VS Code | `Ctrl+Shift+5` |
-
-| Thao tác trong Terminal | Phím |
-|---|---|
-| Mở Terminal | `Ctrl+Alt+T` |
-| Mở thêm tab / chuyển tab | `Ctrl+Shift+T` / `Ctrl+PageUp`, `Ctrl+PageDown` |
-| Copy / dán | `Ctrl+Shift+C` / `Ctrl+Shift+V` |
-| Dừng chương trình đang chạy (server, tcpdump…) | `Ctrl+C` |
-| Gọi lại lệnh đã gõ | `↑` / `↓` |
-| Tự hoàn thành tên file, tên lệnh | `Tab` |
-| Xóa màn hình | `Ctrl+L` |
-| Báo hết dữ liệu nhập (EOF) cho chương trình đang đọc bàn phím | `Ctrl+D` |
-| Trả chuột và bàn phím từ máy ảo về máy thật (VMware) | `Ctrl+Alt` |
 
 ---
 
-## Phần 1. Ôn tập Java: biên dịch, chạy, thông tin mạng (25 phút)
+## Phần 1. Ôn tập Java: biên dịch, chạy, thông tin mạng
 
 Làm trên **[server-1]**, trong thư mục `~/lab/bai1`. Câu 1.3 cần thêm số liệu của VM client: làm lại Bước 1.4 trên **[client-1]**.
 
@@ -280,9 +254,9 @@ java Hello
 ```text
 Hello.class  Hello.java
 Xin chao, day la chuong trinh Java dau tien!
-Phien ban Java : 21.0.13
-He dieu hanh   : Linux 6.8.0-87-generic
-Nguoi dung     : sv
+Phien ban Java : 21.0.13.1
+He dieu hanh   : Linux 7.0.0-44-generic
+Nguoi dung     : lab
 ```
 
 > **Lỗi thường gặp**
@@ -319,7 +293,7 @@ public class ThamSo {
 code ThamSo.java
 javac ThamSo.java
 java ThamSo
-java ThamSo 192.168.157.128 6000
+java ThamSo <server ip> 6000
 ```
 
 **Kết quả:**
@@ -328,9 +302,9 @@ java ThamSo 192.168.157.128 6000
 So tham so nhan duoc: 0
 => host = 127.0.0.1, port = 5000
 So tham so nhan duoc: 2
-  args[0] = 192.168.157.128
+  args[0] = <server ip>
   args[1] = 6000
-=> host = 192.168.157.128, port = 6000
+=> host = <server ip>, port = 6000
 ```
 
 ### Bước 1.3 – Lấy hostname và địa chỉ IP bằng `InetAddress`
@@ -379,7 +353,7 @@ public class HostInfo {
 ```bash
 code HostInfo.java
 javac HostInfo.java
-java HostInfo localhost 192.168.157.129
+java HostInfo localhost <client ip>
 hostname
 hostname -I
 cat /etc/hosts
@@ -392,7 +366,7 @@ Hostname         : server
 IP theo hostname : 127.0.1.1
 Loopback         : localhost -> 127.0.0.1
 getByName("localhost") -> 127.0.0.1
-getByName("192.168.157.129") -> 192.168.157.129
+getByName("<client ip>") -> <client ip>
 ```
 
 **Kết quả** của ba lệnh còn lại:
@@ -401,7 +375,7 @@ getByName("192.168.157.129") -> 192.168.157.129
 $ hostname
 server
 $ hostname -I
-192.168.157.128
+<server ip>
 $ cat /etc/hosts
 127.0.0.1 localhost
 127.0.1.1	server
@@ -411,7 +385,7 @@ $ cat /etc/hosts
 ...
 ```
 
-Để ý: "IP theo hostname" là `127.0.1.1`, **không** phải IP của card mạng. Giải thích ở **Câu 1.1**.
+Để ý: "IP theo hostname" là `127.0.1.1`, **không** phải IP của card mạng.
 
 ### Bước 1.4 – Liệt kê card mạng bằng `NetworkInterface`
 
@@ -483,7 +457,7 @@ ip -br link
 Card mang: ens33 [UP]
    MAC : 00:0c:29:3e:5a:11
    IPv6: fe80:0:0:0:9c1e:4b7a:d2f3:6a05%ens33
-   IPv4: 192.168.157.128
+   IPv4: <server ip>
 Card mang: lo [UP] [LOOPBACK]
    IPv6: 0:0:0:0:0:0:0:1%lo
    IPv4: 127.0.0.1
@@ -494,7 +468,7 @@ Card mang: lo [UP] [LOOPBACK]
 ```text
 $ ip -br addr
 lo               UNKNOWN        127.0.0.1/8 ::1/128
-ens33            UP             192.168.157.128/24 fe80::9c1e:4b7a:d2f3:6a05/64
+ens33            UP             <server ip>/24 fe80::9c1e:4b7a:d2f3:6a05/64
 $ ip -br link
 lo               UNKNOWN        00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP>
 ens33            UP             00:0c:29:3e:5a:11 <BROADCAST,MULTICAST,UP,LOWER_UP>
@@ -506,19 +480,19 @@ ens33            UP             00:0c:29:3e:5a:11 <BROADCAST,MULTICAST,UP,LOWER_
 
 **Mục đích:** thấy cách phân giải tên máy mà không cần DNS. Làm xong bước này, có thể gõ `server` thay cho IP của server.
 
-**Cách làm:** thêm một dòng `IP   tên` vào **cuối** file `/etc/hosts`. File này chỉ root được sửa, nên dùng `sudo tee -a` (`-a`: ghi thêm vào cuối file, không ghi đè). Không sửa các dòng có sẵn.
+**Cách làm:** thêm một dòng `IP   tên` vào **cuối** file `/etc/hosts`. Dùng `sudo tee -a` (`-a`: ghi thêm vào cuối file, không ghi đè). Không sửa các dòng có sẵn.
 
 **Lệnh:**
 
 **[client-1]**
 
 ```bash
-echo "192.168.157.128   server" | sudo tee -a /etc/hosts
+echo "<server ip>   server" | sudo tee -a /etc/hosts
 tail -n 2 /etc/hosts
 ping -c 1 server
 ```
 
-Làm tương tự trên **[server-1]** với dòng `192.168.157.129   client`, rồi `ping -c 1 client`.
+Làm tương tự trên **[server-1]** với dòng `<client ip>   client`, rồi `ping -c 1 client`.
 
 ### Câu hỏi và bài tập Phần 1
 
@@ -537,7 +511,7 @@ Làm tương tự trên **[server-1]** với dòng `192.168.157.129   client`, r
 
 ---
 
-## Phần 2. Socket API từng bước (60 phút)
+## Phần 2. Socket API từng bước
 
 ### 2.1 Kiến thức cần nhớ
 
@@ -584,23 +558,23 @@ Mỗi kết nối TCP được xác định duy nhất bởi **bộ 5 thông s�
 **Trình tự gọi hàm** của một cặp client–server TCP:
 
 ```text
-          SERVER                                         CLIENT
-  new ServerSocket()        (socket)
-  bind(5000)                (bind + listen)
-  accept() ... chờ ...                          new Socket()          (socket)
-           <======== bắt tay 3 bước ==========  connect(IP, 5000)     (connect)
+  SERVER                                           CLIENT
+  new ServerSocket() (socket)
+  bind(5000)         (bind + listen)
+  accept()           ... chờ kết nối ...           new Socket()       (socket)
+                     <===== bắt tay 3 bước =====>  connect(IP, 5000)  (connect)
   accept() trả về Socket mới
-  read()   <---------- dữ liệu ---------------  write()
-  write()  ----------- dữ liệu -------------->  read()
-  read() trả về -1  <------- FIN ------------   close()
-  close()  ------------ FIN ----------------->
+  read()             <-------- dữ liệu ----------  write()
+  write()            --------- dữ liệu --------->  read()
+  read() trả về -1   <---------- FIN ------------  close()
+  close()            ----------- FIN ----------->
 ```
 
 ### Bước 2.2 – Thử nhanh bằng netcat trên cùng một máy
 
 **Mục đích:** trước khi viết Java, thấy một kết nối TCP giữa hai chương trình: một bên lắng nghe, một bên kết nối, rồi hai bên gửi văn bản cho nhau. Thí nghiệm chạy trên địa chỉ loopback `127.0.0.1` của VM server.
 
-**Cách làm:** `nc` (netcat) là công cụ dòng lệnh đọc/ghi dữ liệu qua socket. `nc -l 127.0.0.1 5000` lắng nghe cổng 5000 trên loopback (vai server); `nc 127.0.0.1 5000` kết nối tới đó (vai client). Mỗi dòng gõ ở một bên được gửi sang bên kia; netcat chỉ chuyển dữ liệu, không tự trả lời. Bước này cần mở thêm một Terminal **[server-3]** (tab mới: `Ctrl+Shift+T`).
+**Cách làm:** `nc` (netcat) là công cụ dòng lệnh đọc/ghi dữ liệu qua socket. `nc -l 127.0.0.1 5000` lắng nghe cổng 5000 trên loopback (vai server); `nc 127.0.0.1 5000` kết nối tới đó (vai client). Mỗi dòng gõ ở một bên được gửi sang bên kia; netcat chỉ chuyển dữ liệu, không tự trả lời. Bước này cần mở thêm một Terminal **[server-3]**.
 
 **Lệnh:**
 
@@ -1017,7 +991,7 @@ LISTEN 0      50                 *:5000            *:*
 - Với socket LISTEN, `Send-Q` = 50 là độ dài tối đa của hàng đợi kết nối (backlog), còn `Recv-Q` là số kết nối đang chờ được `accept()`.
 - `*:5000`: mọi địa chỉ IP, cổng 5000.
 
-> Java mặc định tạo socket IPv6 kiểu *dual-stack* (phục vụ được cả IPv4). Vì vậy `ss` in `*` thay cho `0.0.0.0` và in địa chỉ IPv4 ở dạng `[::ffff:192.168.157.128]` (địa chỉ IPv4 ánh xạ sang IPv6). Gói tin thực sự trên mạng vẫn là IPv4, như sẽ thấy ở tcpdump.
+> Java mặc định tạo socket IPv6 kiểu *dual-stack* (phục vụ được cả IPv4). Vì vậy `ss` in `*` thay cho `0.0.0.0` và in địa chỉ IPv4 ở dạng `[::ffff:<server ip>]` (địa chỉ IPv4 ánh xạ sang IPv6). Gói tin thực sự trên mạng vẫn là IPv4, như sẽ thấy ở tcpdump.
 
 **c) Accept và connect.** Nhấn Enter ở **[server-1]**:
 
@@ -1028,7 +1002,7 @@ LISTEN 0      50                 *:5000            *:*
 **[client-1]**
 
 ```bash
-java BuocClient 192.168.157.128
+java BuocClient <server ip>
 ```
 
 Nhấn Enter một lần ở **[client-1]** để client connect:
@@ -1037,8 +1011,8 @@ Nhấn Enter một lần ở **[client-1]** để client connect:
 [1] Da tao Socket. isConnected = false
 >>> Nhan Enter de sang buoc 2 (connect)
 [2] Da ket noi!
-    Dau client : 192.168.157.129:43392
-    Dau server : 192.168.157.128:5000
+    Dau client : <client ip>:43392
+    Dau server : <server ip>:5000
 >>> Nhan Enter de sang buoc 3 (gui du lieu)
 ```
 
@@ -1046,8 +1020,8 @@ Nhấn Enter một lần ở **[client-1]** để client connect:
 
 ```text
 [3] Co client ket noi!
-    Dau server : 192.168.157.128:5000
-    Dau client : 192.168.157.129:43392
+    Dau server : <server ip>:5000
+    Dau client : <client ip>:43392
 >>> Nhan Enter de sang buoc 4 (nhan du lieu)
 ```
 
@@ -1060,7 +1034,7 @@ ss -tan 'sport = :5000'
 ```text
 State  Recv-Q Send-Q            Local Address:Port              Peer Address:Port  Process
 LISTEN 0      50                            *:5000                         *:*
-ESTAB  0      0      [::ffff:192.168.157.128]:5000  [::ffff:192.168.157.129]:43392
+ESTAB  0      0      [::ffff:<server ip>]:5000  [::ffff:<client ip>]:43392
 ```
 
 Socket LISTEN vẫn còn. Có thêm một socket `ESTAB` (*established*: kết nối đã thiết lập), chính là socket mà `accept()` trả về. Cổng 43392 của client do hệ điều hành của client chọn.
@@ -1081,7 +1055,7 @@ ss -tan 'sport = :5000'
 ```text
 State  Recv-Q Send-Q            Local Address:Port              Peer Address:Port  Process
 LISTEN 0      50                            *:5000                         *:*
-ESTAB  15     0      [::ffff:192.168.157.128]:5000  [::ffff:192.168.157.129]:43392
+ESTAB  15     0      [::ffff:<server ip>]:5000  [::ffff:<client ip>]:43392
 ```
 
 `Recv-Q` = 15: 15 byte đã tới máy server và đang nằm trong bộ đệm nhận của hệ điều hành, chờ chương trình gọi `read()`.
@@ -1125,12 +1099,12 @@ ss -tan 'dport = :5000'      # tren [client-1]
 ```text
 State      Recv-Q Send-Q            Local Address:Port              Peer Address:Port  Process
 LISTEN     0      50                            *:5000                         *:*
-CLOSE-WAIT 0      0      [::ffff:192.168.157.128]:5000  [::ffff:192.168.157.129]:43392
+CLOSE-WAIT 0      0      [::ffff:<server ip>]:5000  [::ffff:<client ip>]:43392
 ```
 
 ```text
 State      Recv-Q Send-Q            Local Address:Port             Peer Address:Port  Process
-FIN-WAIT-2 0      0      [::ffff:192.168.157.129]:43392  [::ffff:192.168.157.128]:5000
+FIN-WAIT-2 0      0      [::ffff:<client ip>]:43392  [::ffff:<server ip>]:5000
 ```
 
 Client đã gửi FIN, tức là đóng chiều client → server. Server nhận FIN nên `read()` trả về −1; socket của server ở trạng thái `CLOSE-WAIT`, chờ chương trình server đóng. Socket của client ở `FIN-WAIT-2`, chờ FIN của server.
@@ -1149,7 +1123,7 @@ ss -tan 'dport = :5000'
 
 ```text
 State     Recv-Q Send-Q            Local Address:Port             Peer Address:Port  Process
-TIME-WAIT 0      0      [::ffff:192.168.157.129]:43392  [::ffff:192.168.157.128]:5000
+TIME-WAIT 0      0      [::ffff:<client ip>]:43392  [::ffff:<server ip>]:5000
 ```
 
 Phía server không còn socket nào. Phía client, bên đóng trước, giữ trạng thái `TIME-WAIT` khoảng 60 giây rồi mới xóa hẳn. Chạy lại lệnh sau một phút để kiểm tra. Socket ở `TIME-WAIT` vẫn hiện trong `ss` dù chương trình đã kết thúc; điều đó không có nghĩa là còn chương trình đang lắng nghe hay đang kết nối.
@@ -1170,7 +1144,7 @@ Phía server không còn socket nào. Phía client, bên đóng trước, giữ 
 **[client-1]**
 
 ```bash
-java BuocClient 192.168.157.128
+java BuocClient <server ip>
 ```
 
 Nhấn Enter để connect:
@@ -1220,7 +1194,7 @@ Mỗi cổng TCP chỉ cho một socket lắng nghe. Để biết chương trìn
 
 ---
 
-## Phần 3. Lập trình client–server TCP và quan sát bằng tcpdump (75 phút)
+## Phần 3. Lập trình client–server TCP và quan sát bằng tcpdump
 
 ### 3.1 Giao thức của bài
 
@@ -1376,13 +1350,13 @@ public class EchoClient {
 cd ~/lab/bai3
 code EchoClient.java
 javac EchoClient.java
-java EchoClient 192.168.157.128
+java EchoClient <server ip>
 ```
 
 **Kết quả** trên **[client-1]**:
 
 ```text
-Da ket noi toi 192.168.157.128:5000 tu cong 54416. Go noi dung, QUIT de thoat.
+Da ket noi toi <server ip>:5000 tu cong 54416. Go noi dung, QUIT de thoat.
 > hello
 ECHO: hello
 > QUIT
@@ -1392,10 +1366,10 @@ BYE
 **Kết quả** trên **[server-1]**:
 
 ```text
-+ Client ket noi: 192.168.157.129:54416
-  [192.168.157.129:54416] hello
-  [192.168.157.129:54416] QUIT
-- Client ngat ket noi: 192.168.157.129:54416
++ Client ket noi: <client ip>:54416
+  [<client ip>:54416] hello
+  [<client ip>:54416] QUIT
+- Client ngat ket noi: <client ip>:54416
 ```
 
 Server vẫn chạy và chờ client tiếp theo. Để nguyên server cho các bước sau.
@@ -1411,7 +1385,7 @@ Server vẫn chạy và chờ client tiếp theo. Để nguyên server cho các 
 **[client-1]**
 
 ```bash
-nc 192.168.157.128 5000
+nc <server ip> 5000
 ```
 
 Gõ `hello`, rồi `QUIT`. **Kết quả** (các dòng `hello`, `QUIT` là chữ bạn gõ):
@@ -1431,12 +1405,12 @@ Server trả `BYE` rồi đóng kết nối, nên `nc` cũng thoát.
 nc -l 5000
 ```
 
-**[client-1]**: chạy `java EchoClient 192.168.157.128` và gõ `hello`. Dòng `hello` hiện ra ở **[server-1]**. Bây giờ **bạn** đóng vai server: gõ một câu trả lời ở **[server-1]**, ví dụ `chao ban, toi la netcat`, và câu đó hiện ra ở client. Gõ `QUIT` ở client, rồi gõ `BYE` ở **[server-1]**.
+**[client-1]**: chạy `java EchoClient <server ip>` và gõ `hello`. Dòng `hello` hiện ra ở **[server-1]**. Bây giờ **bạn** đóng vai server: gõ một câu trả lời ở **[server-1]**, ví dụ `chao ban, toi la netcat`, và câu đó hiện ra ở client. Gõ `QUIT` ở client, rồi gõ `BYE` ở **[server-1]**.
 
 **Kết quả** trên **[client-1]**:
 
 ```text
-Da ket noi toi 192.168.157.128:5000 tu cong 44390. Go noi dung, QUIT de thoat.
+Da ket noi toi <server ip>:5000 tu cong 44390. Go noi dung, QUIT de thoat.
 > hello
 chao ban, toi la netcat
 > QUIT
@@ -1461,7 +1435,7 @@ EchoClient không biết đầu kia là chương trình gì. Nó chỉ cần m�
 
 2. **[server-2]**: `ss -tln 'sport = :5000'`.
 3. **[server-3]**: `sudo tcpdump -i ens33 -nn tcp port 5000`.
-4. **[client-1]**: lần lượt chạy `java EchoClient 192.168.157.128` và `java EchoClient 127.0.0.1`.
+4. **[client-1]**: lần lượt chạy `java EchoClient <server ip>` và `java EchoClient 127.0.0.1`.
 5. **[server-2]**: `cd ~/lab/bai3` rồi `java EchoClient 127.0.0.1`; gõ `hello`, rồi `QUIT`.
 6. **[server-1]**: nhấn `Ctrl+C`, chạy lại với `java EchoServer 5000 0.0.0.0`, rồi lặp lại bước 2 và 4.
 
@@ -1476,7 +1450,7 @@ State  Recv-Q Send-Q          Local Address:Port Peer Address:Port Process
 LISTEN 0      50     [::ffff:127.0.0.1]:5000            *:*
 ```
 
-- Client trên VM client, dùng IP của server: `java.net.ConnectException: Connection refused`. tcpdump trên `ens33` thấy gói `[S]` tới và gói `[R.]` trả về: không có socket nào lắng nghe trên IP `192.168.157.128` ở cổng 5000.
+- Client trên VM client, dùng IP của server: `java.net.ConnectException: Connection refused`. tcpdump trên `ens33` thấy gói `[S]` tới và gói `[R.]` trả về: không có socket nào lắng nghe trên IP `<server ip>` ở cổng 5000.
 - Client trên VM client, dùng `127.0.0.1`: cũng `Connection refused`. Trên VM client, `127.0.0.1` là **chính VM client**, nơi không có server nào.
 - Client trên chính VM server, dùng `127.0.0.1`: chạy bình thường (`ECHO: hello`), nhưng tcpdump trên `ens33` **không thấy gói nào** vì kết nối đi qua card `lo`.
 
@@ -1504,7 +1478,7 @@ Dừng server bằng `Ctrl+C`, dừng tcpdump. Từ bước sau, chạy lại Ec
 
 **Mục đích:** thấy các gói tin TCP thực sự đi trên mạng giữa client và server.
 
-**Cách làm:** `tcpdump` bắt gói tin trên một card mạng và cần quyền root (`sudo`, nhập mật khẩu tài khoản của bạn).
+**Cách làm:** `tcpdump` bắt gói tin trên một card mạng.
 
 | Tùy chọn | Ý nghĩa |
 |---|---|
@@ -1518,7 +1492,7 @@ Dừng server bằng `Ctrl+C`, dừng tcpdump. Từ bước sau, chạy lại Ec
 | `-c 10` | dừng sau 10 gói |
 | `-w file.pcap` / `-r file.pcap` | ghi gói ra file / đọc lại từ file |
 
-Bộ lọc đặt ở cuối lệnh, ví dụ: `tcp port 5000`, `udp port 6000`, `host 192.168.157.129`, `arp`, `icmp`. Có thể ghép bằng `and`, `or`, `not`; khi ghép thì đặt cả bộ lọc trong dấu nháy đơn.
+Bộ lọc đặt ở cuối lệnh, ví dụ: `tcp port 5000`, `udp port 6000`, `host <client ip>`, `arp`, `icmp`. Có thể ghép bằng `and`, `or`, `not`; khi ghép thì đặt cả bộ lọc trong dấu nháy đơn.
 
 > **Luôn dùng bộ lọc.** Máy ảo Ubuntu Desktop thường xuyên gửi và nhận các gói không liên quan tới bài (phân giải tên, kiểm tra kết nối Internet, IPv6, mDNS…). Không có bộ lọc, các gói của bài sẽ lẫn trong số đó.
 
@@ -1531,7 +1505,7 @@ Bộ lọc đặt ở cuối lệnh, ví dụ: `tcp port 5000`, `udp port 6000`,
    sudo tcpdump -i ens33 -nn -# tcp port 5000
    ```
 
-3. **[client-1]**: chạy `java EchoClient 192.168.157.128`, gõ `hello`, rồi gõ `QUIT`.
+3. **[client-1]**: chạy `java EchoClient <server ip>`, gõ `hello`, rồi gõ `QUIT`.
 4. **[server-2]**: nhấn `Ctrl+C` để dừng tcpdump.
 
 **Kết quả** trên **[server-2]** (tùy chọn `-#` đánh số các gói ở cột trái):
@@ -1539,19 +1513,19 @@ Bộ lọc đặt ở cuối lệnh, ví dụ: `tcp port 5000`, `udp port 6000`,
 ```text
 tcpdump: verbose output suppressed, use -v[v]... for full protocol decode
 listening on ens33, link-type EN10MB (Ethernet), snapshot length 262144 bytes
-    1  09:11:26.187608 IP 192.168.157.129.54416 > 192.168.157.128.5000: Flags [S], seq 2877318029, win 64240, options [mss 1460,sackOK,TS val 322954383 ecr 0,nop,wscale 7], length 0
-    2  09:11:26.187624 IP 192.168.157.128.5000 > 192.168.157.129.54416: Flags [S.], seq 4141629629, ack 2877318030, win 65160, options [mss 1460,sackOK,TS val 348568750 ecr 322954383,nop,wscale 7], length 0
-    3  09:11:26.187637 IP 192.168.157.129.54416 > 192.168.157.128.5000: Flags [.], ack 1, win 502, options [nop,nop,TS val 322954383 ecr 348568750], length 0
-    4  09:11:27.123587 IP 192.168.157.129.54416 > 192.168.157.128.5000: Flags [P.], seq 1:7, ack 1, win 502, options [nop,nop,TS val 322955319 ecr 348568750], length 6
-    5  09:11:27.123607 IP 192.168.157.128.5000 > 192.168.157.129.54416: Flags [.], ack 7, win 510, options [nop,nop,TS val 348569686 ecr 322955319], length 0
-    6  09:11:27.128623 IP 192.168.157.128.5000 > 192.168.157.129.54416: Flags [P.], seq 1:13, ack 7, win 510, options [nop,nop,TS val 348569691 ecr 322955319], length 12
-    7  09:11:27.128641 IP 192.168.157.129.54416 > 192.168.157.128.5000: Flags [.], ack 13, win 502, options [nop,nop,TS val 322955324 ecr 348569691], length 0
-    8  09:11:28.124637 IP 192.168.157.129.54416 > 192.168.157.128.5000: Flags [P.], seq 7:12, ack 13, win 502, options [nop,nop,TS val 322956320 ecr 348569691], length 5
-    9  09:11:28.125018 IP 192.168.157.128.5000 > 192.168.157.129.54416: Flags [P.], seq 13:17, ack 12, win 510, options [nop,nop,TS val 348570687 ecr 322956320], length 4
-   10  09:11:28.125028 IP 192.168.157.129.54416 > 192.168.157.128.5000: Flags [.], ack 17, win 502, options [nop,nop,TS val 322956320 ecr 348570687], length 0
-   11  09:11:28.126349 IP 192.168.157.128.5000 > 192.168.157.129.54416: Flags [F.], seq 17, ack 12, win 510, options [nop,nop,TS val 348570689 ecr 322956320], length 0
-   12  09:11:28.126891 IP 192.168.157.129.54416 > 192.168.157.128.5000: Flags [F.], seq 12, ack 18, win 502, options [nop,nop,TS val 322956322 ecr 348570689], length 0
-   13  09:11:28.126899 IP 192.168.157.128.5000 > 192.168.157.129.54416: Flags [.], ack 13, win 510, options [nop,nop,TS val 348570689 ecr 322956322], length 0
+    1  09:11:26.187608 IP <client ip>.54416 > <server ip>.5000: Flags [S], seq 2877318029, win 64240, options [mss 1460,sackOK,TS val 322954383 ecr 0,nop,wscale 7], length 0
+    2  09:11:26.187624 IP <server ip>.5000 > <client ip>.54416: Flags [S.], seq 4141629629, ack 2877318030, win 65160, options [mss 1460,sackOK,TS val 348568750 ecr 322954383,nop,wscale 7], length 0
+    3  09:11:26.187637 IP <client ip>.54416 > <server ip>.5000: Flags [.], ack 1, win 502, options [nop,nop,TS val 322954383 ecr 348568750], length 0
+    4  09:11:27.123587 IP <client ip>.54416 > <server ip>.5000: Flags [P.], seq 1:7, ack 1, win 502, options [nop,nop,TS val 322955319 ecr 348568750], length 6
+    5  09:11:27.123607 IP <server ip>.5000 > <client ip>.54416: Flags [.], ack 7, win 510, options [nop,nop,TS val 348569686 ecr 322955319], length 0
+    6  09:11:27.128623 IP <server ip>.5000 > <client ip>.54416: Flags [P.], seq 1:13, ack 7, win 510, options [nop,nop,TS val 348569691 ecr 322955319], length 12
+    7  09:11:27.128641 IP <client ip>.54416 > <server ip>.5000: Flags [.], ack 13, win 502, options [nop,nop,TS val 322955324 ecr 348569691], length 0
+    8  09:11:28.124637 IP <client ip>.54416 > <server ip>.5000: Flags [P.], seq 7:12, ack 13, win 502, options [nop,nop,TS val 322956320 ecr 348569691], length 5
+    9  09:11:28.125018 IP <server ip>.5000 > <client ip>.54416: Flags [P.], seq 13:17, ack 12, win 510, options [nop,nop,TS val 348570687 ecr 322956320], length 4
+   10  09:11:28.125028 IP <client ip>.54416 > <server ip>.5000: Flags [.], ack 17, win 502, options [nop,nop,TS val 322956320 ecr 348570687], length 0
+   11  09:11:28.126349 IP <server ip>.5000 > <client ip>.54416: Flags [F.], seq 17, ack 12, win 510, options [nop,nop,TS val 348570689 ecr 322956320], length 0
+   12  09:11:28.126891 IP <client ip>.54416 > <server ip>.5000: Flags [F.], seq 12, ack 18, win 502, options [nop,nop,TS val 322956322 ecr 348570689], length 0
+   13  09:11:28.126899 IP <server ip>.5000 > <client ip>.54416: Flags [.], ack 13, win 510, options [nop,nop,TS val 348570689 ecr 322956322], length 0
 ^C
 13 packets captured
 13 packets received by filter
@@ -1563,7 +1537,7 @@ listening on ens33, link-type EN10MB (Ethernet), snapshot length 262144 bytes
 | Phần | Trong gói số 4 | Ý nghĩa |
 |---|---|---|
 | Thời gian | `09:11:27.123587` | giờ:phút:giây, chính xác tới micro giây |
-| Nguồn > đích | `192.168.157.129.54416 > 192.168.157.128.5000` | `IP.cổng` nguồn > `IP.cổng` đích |
+| Nguồn > đích | `<client ip>.54416 > <server ip>.5000` | `IP.cổng` nguồn > `IP.cổng` đích |
 | Cờ | `Flags [P.]` | xem bảng ngay dưới |
 | Số thứ tự | `seq 1:7` | gói chở các byte thứ 1 đến 6 của chiều này |
 | Báo nhận | `ack 1` | số thứ tự của byte tiếp theo mà bên gửi mong nhận |
@@ -1594,7 +1568,7 @@ listening on ens33, link-type EN10MB (Ethernet), snapshot length 262144 bytes
 **Đóng kết nối (gói 11–13):** server gửi FIN trước (ngay sau khi trả `BYE`), client gửi FIN của mình, server báo nhận. Mỗi chiều được đóng bằng một cặp FIN + ACK. Ở đây ACK của client gộp luôn vào gói FIN của nó, nên chỉ có 3 gói thay vì 4. Trên máy bạn, bên gửi FIN trước có thể khác.
 
 ```text
- client 192.168.157.129:54416                        server 192.168.157.128:5000
+ client <client ip>:54416                            server <server ip>:5000
     |  1  [S]  seq=ISN_c                              ---------->  |
     |  2  [S.] seq=ISN_s, ack=ISN_c+1                 <----------  |
     |  3  [.]  ack 1                                  ---------->  |  ESTABLISHED
@@ -1619,7 +1593,7 @@ cd ~/lab/bai3
 sudo tcpdump -i ens33 -nn -s 0 -w tcp-MSSV.pcap tcp port 5000
 ```
 
-**[client-1]**: chạy `java EchoClient 192.168.157.128`, gõ `MSSV: <mã số của bạn>`, rồi `QUIT`. Quay lại **[server-2]**, nhấn `Ctrl+C`, rồi đọc file (đọc file không cần `sudo`):
+**[client-1]**: chạy `java EchoClient <server ip>`, gõ `MSSV: <mã số của bạn>`, rồi `QUIT`. Quay lại **[server-2]**, nhấn `Ctrl+C`, rồi đọc file (đọc file không cần `sudo`):
 
 ```bash
 tcpdump -nn -r tcp-MSSV.pcap
@@ -1660,12 +1634,12 @@ tcpdump -nn -r tcp-MSSV.pcap 'tcp[tcpflags] & tcp-syn != 0'
 sudo tcpdump -i ens33 -nn -X tcp port 5000
 ```
 
-**[client-1]**: chạy lại `java EchoClient 192.168.157.128`, gõ `hello`, rồi `QUIT`.
+**[client-1]**: chạy lại `java EchoClient <server ip>`, gõ `hello`, rồi `QUIT`.
 
 **Kết quả:** gói chứa `hello` trông như sau.
 
 ```text
-09:11:27.123587 IP 192.168.157.129.54416 > 192.168.157.128.5000: Flags [P.], seq 1:7, ack 1, win 502, options [nop,nop,TS val 322955319 ecr 348568750], length 6
+09:11:27.123587 IP <client ip>.54416 > <server ip>.5000: Flags [P.], seq 1:7, ack 1, win 502, options [nop,nop,TS val 322955319 ecr 348568750], length 6
 	0x0000:  4500 003a 19e8 4000 4006 6483 c0a8 9d81  E..:..@.@.d.....
 	0x0010:  c0a8 9d80 d490 1388 ab80 638e f6dc 40be  ..........c...@.
 	0x0020:  8018 01f6 78db 0000 0101 080a 133f e837  ....x........?.7
@@ -1682,8 +1656,8 @@ Cột đầu là vị trí byte (hex), tiếp theo là 16 byte mỗi dòng, cộ
 | 6–7 | `4000` | Flags, Fragment Offset | cờ DF (không phân mảnh) |
 | 8 | `40` | TTL | 64 |
 | 9 | `06` | Protocol | 6 = TCP |
-| 12–15 | `c0a8 9d81` | IP nguồn | 192.168.157.129 |
-| 16–19 | `c0a8 9d80` | IP đích | 192.168.157.128 |
+| 12–15 | `c0a8 9d81` | IP nguồn | `<client ip>` (mỗi byte hex là một số của IP: `c0` = 192, `a8` = 168, …) |
+| 16–19 | `c0a8 9d80` | IP đích | `<server ip>` |
 | **Header TCP** (32 byte) | | | |
 | 20–21 | `d490` | Cổng nguồn | 54416 |
 | 22–23 | `1388` | Cổng đích | 5000 |
@@ -1722,7 +1696,7 @@ Cột đầu là vị trí byte (hex), tiếp theo là 16 byte mỗi dòng, cộ
 
    ```bash
    cd ~/lab/bai2
-   java BuocClient 192.168.157.128
+   java BuocClient <server ip>
    ```
 
 4. Nhấn Enter lần lượt như Bước 2.6. **Sau mỗi lần nhấn Enter, xem tcpdump in thêm những gói nào.**
@@ -1730,17 +1704,17 @@ Cột đầu là vị trí byte (hex), tiếp theo là 16 byte mỗi dòng, cộ
 **Kết quả:**
 
 ```text
-09:13:07.067805 IP 192.168.157.129.43392 > 192.168.157.128.5000: Flags [S], seq 1326879607, win 64240, options [mss 1460,sackOK,TS val 755014966 ecr 0,nop,wscale 7], length 0
-09:13:07.067818 IP 192.168.157.128.5000 > 192.168.157.129.43392: Flags [S.], seq 2741381473, ack 1326879608, win 65160, options [mss 1460,sackOK,TS val 443477466 ecr 755014966,nop,wscale 7], length 0
-09:13:07.067829 IP 192.168.157.129.43392 > 192.168.157.128.5000: Flags [.], ack 1, win 502, options [nop,nop,TS val 755014966 ecr 443477466], length 0
-09:13:08.070089 IP 192.168.157.129.43392 > 192.168.157.128.5000: Flags [P.], seq 1:16, ack 1, win 502, options [nop,nop,TS val 755015968 ecr 443477466], length 15
-09:13:08.070109 IP 192.168.157.128.5000 > 192.168.157.129.43392: Flags [.], ack 16, win 509, options [nop,nop,TS val 443478469 ecr 755015968], length 0
-09:13:10.076793 IP 192.168.157.128.5000 > 192.168.157.129.43392: Flags [P.], seq 1:32, ack 16, win 509, options [nop,nop,TS val 443480475 ecr 755015968], length 31
-09:13:10.076858 IP 192.168.157.129.43392 > 192.168.157.128.5000: Flags [.], ack 32, win 502, options [nop,nop,TS val 755017975 ecr 443480475], length 0
-09:13:11.077619 IP 192.168.157.129.43392 > 192.168.157.128.5000: Flags [F.], seq 16, ack 32, win 502, options [nop,nop,TS val 755018976 ecr 443480475], length 0
-09:13:11.121123 IP 192.168.157.128.5000 > 192.168.157.129.43392: Flags [.], ack 17, win 509, options [nop,nop,TS val 443481520 ecr 755018976], length 0
-09:13:12.113300 IP 192.168.157.128.5000 > 192.168.157.129.43392: Flags [F.], seq 32, ack 17, win 509, options [nop,nop,TS val 443482512 ecr 755018976], length 0
-09:13:12.113326 IP 192.168.157.129.43392 > 192.168.157.128.5000: Flags [.], ack 33, win 502, options [nop,nop,TS val 755020012 ecr 443482512], length 0
+09:13:07.067805 IP <client ip>.43392 > <server ip>.5000: Flags [S], seq 1326879607, win 64240, options [mss 1460,sackOK,TS val 755014966 ecr 0,nop,wscale 7], length 0
+09:13:07.067818 IP <server ip>.5000 > <client ip>.43392: Flags [S.], seq 2741381473, ack 1326879608, win 65160, options [mss 1460,sackOK,TS val 443477466 ecr 755014966,nop,wscale 7], length 0
+09:13:07.067829 IP <client ip>.43392 > <server ip>.5000: Flags [.], ack 1, win 502, options [nop,nop,TS val 755014966 ecr 443477466], length 0
+09:13:08.070089 IP <client ip>.43392 > <server ip>.5000: Flags [P.], seq 1:16, ack 1, win 502, options [nop,nop,TS val 755015968 ecr 443477466], length 15
+09:13:08.070109 IP <server ip>.5000 > <client ip>.43392: Flags [.], ack 16, win 509, options [nop,nop,TS val 443478469 ecr 755015968], length 0
+09:13:10.076793 IP <server ip>.5000 > <client ip>.43392: Flags [P.], seq 1:32, ack 16, win 509, options [nop,nop,TS val 443480475 ecr 755015968], length 31
+09:13:10.076858 IP <client ip>.43392 > <server ip>.5000: Flags [.], ack 32, win 502, options [nop,nop,TS val 755017975 ecr 443480475], length 0
+09:13:11.077619 IP <client ip>.43392 > <server ip>.5000: Flags [F.], seq 16, ack 32, win 502, options [nop,nop,TS val 755018976 ecr 443480475], length 0
+09:13:11.121123 IP <server ip>.5000 > <client ip>.43392: Flags [.], ack 17, win 509, options [nop,nop,TS val 443481520 ecr 755018976], length 0
+09:13:12.113300 IP <server ip>.5000 > <client ip>.43392: Flags [F.], seq 32, ack 17, win 509, options [nop,nop,TS val 443482512 ecr 755018976], length 0
+09:13:12.113326 IP <client ip>.43392 > <server ip>.5000: Flags [.], ack 33, win 502, options [nop,nop,TS val 755020012 ecr 443482512], length 0
 ```
 
 | Lệnh trong chương trình | Gói tin sinh ra |
@@ -1764,7 +1738,7 @@ Lần này việc đóng kết nối có đủ 4 gói. Server dừng chờ Enter
 
 1. **[server-1]**: nhấn `Ctrl+C` để dừng chương trình server, nếu đang chạy.
 2. **[server-2]**: chạy `sudo tcpdump -i ens33 -nn tcp port 5000`.
-3. **[client-1]**: chạy `java EchoClient 192.168.157.128`.
+3. **[client-1]**: chạy `java EchoClient <server ip>`.
 
 **Kết quả** trên **[client-1]**:
 
@@ -1777,8 +1751,8 @@ Exception in thread "main" java.net.ConnectException: Connection refused
 **Kết quả** trên **[server-2]**:
 
 ```text
-09:14:08.126951 IP 192.168.157.129.57150 > 192.168.157.128.5000: Flags [S], seq 2950675411, win 64240, options [mss 1460,sackOK,TS val 4015951009 ecr 0,nop,wscale 7], length 0
-09:14:08.126968 IP 192.168.157.128.5000 > 192.168.157.129.57150: Flags [R.], seq 0, ack 2950675412, win 0, length 0
+09:14:08.126951 IP <client ip>.57150 > <server ip>.5000: Flags [S], seq 2950675411, win 64240, options [mss 1460,sackOK,TS val 4015951009 ecr 0,nop,wscale 7], length 0
+09:14:08.126968 IP <server ip>.5000 > <client ip>.57150: Flags [R.], seq 0, ack 2950675412, win 0, length 0
 ```
 
 Gói SYN tới được server, nhưng không có socket nào LISTEN ở cổng 5000. Hệ điều hành của server trả về gói RST (`[R.]`), và Java phía client ném `ConnectException: Connection refused`.
@@ -1802,27 +1776,27 @@ Gói SYN tới được server, nhưng không có socket nào LISTEN ở cổng 
 
    ```bash
    sudo ip neigh flush all
-   java EchoClient 192.168.157.128      # go QUIT
+   java EchoClient <server ip>      # go QUIT
    ```
 
-**Kết quả** (ba dòng đầu; có thể xen thêm các gói ARP hỏi địa chỉ `192.168.157.2`, là gateway của mạng NAT, hãy bỏ qua chúng):
+**Kết quả** (ba dòng đầu; có thể xen thêm các gói ARP hỏi địa chỉ gateway của mạng NAT (thường có số cuối là `.2`), hãy bỏ qua chúng):
 
 ```text
-09:15:07.067790 00:0c:29:8b:c4:22 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.157.128 tell 192.168.157.129, length 46
-09:15:07.067801 00:0c:29:3e:5a:11 > 00:0c:29:8b:c4:22, ethertype ARP (0x0806), length 42: Reply 192.168.157.128 is-at 00:0c:29:3e:5a:11, length 28
-09:15:07.067805 00:0c:29:8b:c4:22 > 00:0c:29:3e:5a:11, ethertype IPv4 (0x0800), length 74: 192.168.157.129.43392 > 192.168.157.128.5000: Flags [S], seq 1326879607, win 64240, options [mss 1460,sackOK,TS val 755014966 ecr 0,nop,wscale 7], length 0
+09:15:07.067790 00:0c:29:8b:c4:22 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has <server ip> tell <client ip>, length 46
+09:15:07.067801 00:0c:29:3e:5a:11 > 00:0c:29:8b:c4:22, ethertype ARP (0x0806), length 42: Reply <server ip> is-at 00:0c:29:3e:5a:11, length 28
+09:15:07.067805 00:0c:29:8b:c4:22 > 00:0c:29:3e:5a:11, ethertype IPv4 (0x0800), length 74: <client ip>.43392 > <server ip>.5000: Flags [S], seq 1326879607, win 64240, options [mss 1460,sackOK,TS val 755014966 ecr 0,nop,wscale 7], length 0
 ```
 
-- Gói ARP Request được gửi tới địa chỉ quảng bá `ff:ff:ff:ff:ff:ff` để hỏi "máy nào có IP 192.168.157.128?". Server trả lời thẳng cho client: "IP đó ở MAC `00:0c:29:3e:5a:11`".
+- Gói ARP Request được gửi tới địa chỉ quảng bá `ff:ff:ff:ff:ff:ff` để hỏi "máy nào có IP <server ip>?". Server trả lời thẳng cho client: "IP đó ở MAC `00:0c:29:3e:5a:11`".
 - Sau đó gói SYN đi trong một khung Ethernet có MAC nguồn và MAC đích. `ethertype` cho biết khung chở gì: `0x0806` là ARP, `0x0800` là IPv4.
 - `length 74` là độ dài cả khung: 14 byte Ethernet + 20 byte IP + 40 byte TCP (có options).
 
-**Kết nối tới một IP không tồn tại.** Chọn một IP cùng dải mạng mà không máy nào dùng, ví dụ thay số cuối bằng 200.
+**Kết nối tới một IP không tồn tại.** Chọn một IP cùng dải mạng mà không máy nào dùng (ví dụ lấy `<server ip>` và thay số cuối bằng 200), gọi là `<unused ip>`.
 
 **[client-1]**
 
 ```bash
-java EchoClient 192.168.157.200
+java EchoClient <unused ip>
 ```
 
 Sau khoảng 3 giây:
@@ -1835,9 +1809,9 @@ Exception in thread "main" java.net.NoRouteToHostException: No route to host
 tcpdump (vẫn chạy với bộ lọc có `arp`) thấy ba ARP Request không ai trả lời, cách nhau 1 giây, và không có gói TCP nào được gửi đi:
 
 ```text
-09:16:50.238291 00:0c:29:8b:c4:22 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.157.200 tell 192.168.157.129, length 46
-09:16:51.249194 00:0c:29:8b:c4:22 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.157.200 tell 192.168.157.129, length 46
-09:16:52.273197 00:0c:29:8b:c4:22 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has 192.168.157.200 tell 192.168.157.129, length 46
+09:16:50.238291 00:0c:29:8b:c4:22 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has <unused ip> tell <client ip>, length 46
+09:16:51.249194 00:0c:29:8b:c4:22 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has <unused ip> tell <client ip>, length 46
+09:16:52.273197 00:0c:29:8b:c4:22 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 60: Request who-has <unused ip> tell <client ip>, length 46
 ```
 
 ### Bước 3.11 – Hai client cùng lúc với server kiểu lặp
@@ -1847,13 +1821,13 @@ tcpdump (vẫn chạy với bộ lọc có `arp`) thấy ba ARP Request không a
 **Lệnh:**
 
 1. **[server-1]**: EchoServer đang chạy.
-2. Trên VM client, mở thêm một tab Terminal (`Ctrl+Shift+T`), gọi là **[client-2]**.
-3. **[client-1]**: chạy `java EchoClient 192.168.157.128`, gõ `toi la A`. **Đừng gõ QUIT.**
+2. Trên VM client, mở thêm một Terminal, gọi là **[client-2]**.
+3. **[client-1]**: chạy `java EchoClient <server ip>`, gõ `toi la A`. **Đừng gõ QUIT.**
 4. **[client-2]**:
 
    ```bash
    cd ~/lab/bai3
-   java EchoClient 192.168.157.128
+   java EchoClient <server ip>
    ```
 
    Gõ `toi la B`: **không có trả lời**.
@@ -1865,8 +1839,8 @@ tcpdump (vẫn chạy với bộ lọc có `arp`) thấy ba ARP Request không a
 ```text
 State  Recv-Q Send-Q            Local Address:Port              Peer Address:Port  Process
 LISTEN 1      50                            *:5000                         *:*
-ESTAB  0      0      [::ffff:192.168.157.128]:5000  [::ffff:192.168.157.129]:54432
-ESTAB  9      0      [::ffff:192.168.157.128]:5000  [::ffff:192.168.157.129]:54444
+ESTAB  0      0      [::ffff:<server ip>]:5000  [::ffff:<client ip>]:54432
+ESTAB  9      0      [::ffff:<server ip>]:5000  [::ffff:<client ip>]:54444
 ```
 
 Client B đã kết nối xong, vì hệ điều hành của server đã hoàn tất bắt tay và đưa kết nối vào hàng đợi (`Recv-Q` của dòng LISTEN là 1). 9 byte `toi la B\n` cũng đã tới (`Recv-Q` = 9). Tuy vậy, chương trình server còn đang bận phục vụ A nên chưa gọi `accept()` để lấy B ra. Như vậy, **kết nối TCP thành công không có nghĩa là ứng dụng đã xử lý yêu cầu**.
@@ -1977,19 +1951,19 @@ Lặp lại thí nghiệm ở Bước 3.11 (A gõ `toi la A`, B gõ `toi la B`, 
 
 ```text
 MultiEchoServer dang lang nghe cong 5000 (Ctrl+C de dung)
-+ [Thread-0] Client ket noi: 192.168.157.129:58176
-+ [Thread-1] Client ket noi: 192.168.157.129:58190
-  [Thread-0] 192.168.157.129:58176: toi la A
-  [Thread-1] 192.168.157.129:58190: toi la B
-  [Thread-0] 192.168.157.129:58176: QUIT
-  [Thread-1] 192.168.157.129:58190: QUIT
-- [Thread-0] Client ngat ket noi: 192.168.157.129:58176
-- [Thread-1] Client ngat ket noi: 192.168.157.129:58190
++ [Thread-0] Client ket noi: <client ip>:58176
++ [Thread-1] Client ket noi: <client ip>:58190
+  [Thread-0] <client ip>:58176: toi la A
+  [Thread-1] <client ip>:58190: toi la B
+  [Thread-0] <client ip>:58176: QUIT
+  [Thread-1] <client ip>:58190: QUIT
+- [Thread-0] Client ngat ket noi: <client ip>:58176
+- [Thread-1] Client ngat ket noi: <client ip>:58190
 ```
 
 Nhiều luồng chạy song song cùng dùng chung các biến `static`. Muốn đếm, chẳng hạn, tổng số thông điệp mà mọi luồng đã xử lý, hãy dùng `java.util.concurrent.atomic.AtomicInteger` và `incrementAndGet()` (Bài 3.12). Một biến `int` thường với `count++` không an toàn khi nhiều luồng cùng tăng, vì `count++` gồm ba thao tác riêng: đọc, cộng, ghi.
 
-Trong lúc hai client đang kết nối, `ss -tan 'sport = :5000'` cho thấy hai kết nối ESTAB. Hai kết nối có cùng IP và cổng phía server (`192.168.157.128:5000`) và chỉ khác cổng phía client. Bộ 5 thông số khác nhau nên hệ điều hành vẫn phân biệt được hai kết nối.
+Trong lúc hai client đang kết nối, `ss -tan 'sport = :5000'` cho thấy hai kết nối ESTAB. Hai kết nối có cùng IP và cổng phía server (`<server ip>:5000`) và chỉ khác cổng phía client. Bộ 5 thông số khác nhau nên hệ điều hành vẫn phân biệt được hai kết nối.
 
 ### Câu hỏi và bài tập Phần 3
 
@@ -2010,7 +1984,7 @@ Trong lúc hai client đang kết nối, `ss -tan 'sport = :5000'` cho thấy ha
 
 ---
 
-## Phần 4. Lập trình client–server UDP (50 phút)
+## Phần 4. Lập trình client–server UDP
 
 ### 4.1 Kiến thức cần nhớ
 
@@ -2131,14 +2105,14 @@ Nhấn Enter ở **[server-1]** để sang bước 3 (`receive`). Gửi một da
 **[client-1]**
 
 ```bash
-printf 'hello' | nc -u -w1 192.168.157.128 6000
+printf 'hello' | nc -u -w1 <server ip> 6000
 ```
 
 **Kết quả** trên **[server-1]**:
 
 ```text
 [3] Dang cho datagram (bo dem 1024 byte)...
-[3] Nhan tu 192.168.157.129:45598
+[3] Nhan tu <client ip>:45598
     So byte : 5
     Noi dung: hello
 [4] Da dong socket. Ket thuc.
@@ -2149,11 +2123,11 @@ Không có `accept()`, không có socket phiên: `receive()` trả về datagram
 **Thử thêm: datagram lớn hơn bộ đệm.** Chạy `java UdpBuoc 6000 8` (bộ đệm 8 byte), nhấn Enter hai lần, rồi gửi 16 byte từ client:
 
 ```bash
-printf 'xin chao cac ban' | nc -u -w1 192.168.157.128 6000
+printf 'xin chao cac ban' | nc -u -w1 <server ip> 6000
 ```
 
 ```text
-[3] Nhan tu 192.168.157.129:48381
+[3] Nhan tu <client ip>:48381
     So byte : 8
     Noi dung: xin chao
 ```
@@ -2302,7 +2276,7 @@ public class UdpClient {
 cd ~/lab/bai4
 code UdpClient.java
 javac UdpClient.java
-java UdpClient 192.168.157.128
+java UdpClient <server ip>
 ```
 
 **Kết quả** trên **[client-1]**:
@@ -2319,11 +2293,11 @@ XIN CHAO
 **Kết quả** trên **[server-1]**:
 
 ```text
-Nhan 5 byte tu 192.168.157.129:54516: hello
-Nhan 8 byte tu 192.168.157.129:54516: xin chao
+Nhan 5 byte tu <client ip>:54516: hello
+Nhan 8 byte tu <client ip>:54516: xin chao
 ```
 
-**Thử thêm:** netcat cũng làm được UDP client. Trên **[client-1]**, chạy `printf 'hello\n' | nc -u -w1 192.168.157.128 6000`: màn hình in `HELLO`, và server ghi `Nhan 6 byte` vì lần này có cả ký tự xuống dòng.
+**Thử thêm:** netcat cũng làm được UDP client. Trên **[client-1]**, chạy `printf 'hello\n' | nc -u -w1 <server ip> 6000`: màn hình in `HELLO`, và server ghi `Nhan 6 byte` vì lần này có cả ký tự xuống dòng.
 
 ### Bước 4.5 – Bắt gói UDP
 
@@ -2337,16 +2311,16 @@ Nhan 8 byte tu 192.168.157.129:54516: xin chao
 sudo tcpdump -i ens33 -nn -X udp port 6000
 ```
 
-**[client-1]**: chạy lại `java UdpClient 192.168.157.128`, gõ `hello`, rồi `QUIT`.
+**[client-1]**: chạy lại `java UdpClient <server ip>`, gõ `hello`, rồi `QUIT`.
 
 **Kết quả:**
 
 ```text
-09:22:42.850951 IP 192.168.157.129.54516 > 192.168.157.128.6000: UDP, length 5
+09:22:42.850951 IP <client ip>.54516 > <server ip>.6000: UDP, length 5
 	0x0000:  4500 0021 f75c 4000 4011 871c c0a8 9d81  E..!.\@.@.......
 	0x0010:  c0a8 9d80 d4f4 1770 000d 134a 6865 6c6c  .......p...Jhell
 	0x0020:  6f                                       o
-09:22:42.865276 IP 192.168.157.128.6000 > 192.168.157.129.54516: UDP, length 5
+09:22:42.865276 IP <server ip>.6000 > <client ip>.54516: UDP, length 5
 	0x0000:  4500 0021 1594 4000 4011 68e5 c0a8 9d80  E..!..@.@.h.....
 	0x0010:  c0a8 9d81 1770 d4f4 000d 738a 4845 4c4c  .....p....s.HELL
 	0x0020:  4f                                       O
@@ -2380,7 +2354,7 @@ Một lần hỏi–đáp chỉ có **2 gói**, không có SYN, FIN hay ACK.
    sudo tcpdump -i ens33 -nn 'udp port 6000 or icmp'
    ```
 
-3. **[client-1]**: chạy `java UdpClient 192.168.157.128`, gõ `hello`.
+3. **[client-1]**: chạy `java UdpClient <server ip>`, gõ `hello`.
 
 **Kết quả** trên **[client-1]**, sau 3 giây:
 
@@ -2392,8 +2366,8 @@ Một lần hỏi–đáp chỉ có **2 gói**, không có SYN, FIN hay ACK.
 **Kết quả** trên **[server-2]**:
 
 ```text
-09:24:50.107642 IP 192.168.157.129.49366 > 192.168.157.128.6000: UDP, length 5
-09:24:50.107661 IP 192.168.157.128 > 192.168.157.129: ICMP 192.168.157.128 udp port 6000 unreachable, length 41
+09:24:50.107642 IP <client ip>.49366 > <server ip>.6000: UDP, length 5
+09:24:50.107661 IP <server ip> > <client ip>: ICMP <server ip> udp port 6000 unreachable, length 41
 ```
 
 Hệ điều hành của server báo lỗi ngay bằng một gói **ICMP "port unreachable"** (với TCP thì là gói RST). Nhưng socket UDP chưa `connect` thì hệ điều hành của client không chuyển lỗi này cho chương trình, nên chương trình chỉ biết khi hết thời gian chờ.
@@ -2419,7 +2393,7 @@ Hệ điều hành của server báo lỗi ngay bằng một gói **ICMP "port u
 ```bash
 code UdpClient.java          # them dong socket.connect(server, port); roi luu
 javac UdpClient.java
-java UdpClient 192.168.157.128
+java UdpClient <server ip>
 ```
 
 Gõ `hello`.
@@ -2443,7 +2417,7 @@ Trên tcpdump: lúc chương trình gọi `connect()` không có gói nào; ch�
                 if (msg.equals("DROP")) continue;                     // gia lap ung dung khong tra loi
 ```
 
-**Lệnh:** biên dịch, chạy lại UdpServer ở **[server-1]**; ở **[client-1]** chạy `java UdpClient 192.168.157.128`, gõ `hello`, rồi `DROP`.
+**Lệnh:** biên dịch, chạy lại UdpServer ở **[server-1]**; ở **[client-1]** chạy `java UdpClient <server ip>`, gõ `hello`, rồi `DROP`.
 
 **Kết quả:**
 
@@ -2491,8 +2465,8 @@ sudo tc qdisc add dev ens33 root netem loss 30%
 ```
 
 Lần lượt thử:
-1. **UDP:** chạy `java UdpServer` ở **[server-1]** (thư mục `~/lab/bai4`), chạy `java UdpClient 192.168.157.128` ở **[client-1]** và gõ khoảng 10 dòng. Khoảng 30% số dòng sẽ báo `(Khong nhan duoc tra loi sau 3 giay)`.
-2. **TCP:** dừng UdpServer, chạy `java EchoServer` ở **[server-1]** (thư mục `~/lab/bai3`), chạy `java EchoClient 192.168.157.128` ở **[client-1]** (cũng trong `~/lab/bai3`) và gõ khoảng 10 dòng. Dòng nào cũng nhận được `ECHO:`, có lúc chậm hơn bình thường. Trong khi client còn kết nối, chạy `ss -ti 'sport = :5000'` ở **[server-2]** và tìm bộ đếm `retrans:` (số segment TCP đã phải truyền lại).
+1. **UDP:** chạy `java UdpServer` ở **[server-1]** (thư mục `~/lab/bai4`), chạy `java UdpClient <server ip>` ở **[client-1]** và gõ khoảng 10 dòng. Khoảng 30% số dòng sẽ báo `(Khong nhan duoc tra loi sau 3 giay)`.
+2. **TCP:** dừng UdpServer, chạy `java EchoServer` ở **[server-1]** (thư mục `~/lab/bai3`), chạy `java EchoClient <server ip>` ở **[client-1]** (cũng trong `~/lab/bai3`) và gõ khoảng 10 dòng. Dòng nào cũng nhận được `ECHO:`, có lúc chậm hơn bình thường. Trong khi client còn kết nối, chạy `ss -ti 'sport = :5000'` ở **[server-2]** và tìm bộ đếm `retrans:` (số segment TCP đã phải truyền lại).
 
 **Tắt netem** khi làm xong:
 
@@ -2517,7 +2491,7 @@ sudo tc qdisc del dev ens33 root
 
 ---
 
-## Phần 5. Giao thức tầng ứng dụng: HTTP và giao thức lệnh (50 phút)
+## Phần 5. Giao thức tầng ứng dụng: HTTP và giao thức lệnh
 
 Socket chỉ chuyển các byte; ý nghĩa của các byte đó do **giao thức tầng ứng dụng** quy định. Phần này xem một giao thức có sẵn, HTTP, ở dạng văn bản thô, rồi tự thiết kế một giao thức lệnh đơn giản. Làm trong thư mục `~/lab/bai5` trên cả hai máy.
 
@@ -2541,8 +2515,8 @@ python3 -m http.server 8080 --bind 0.0.0.0
 **[client-1]**
 
 ```bash
-curl -i http://192.168.157.128:8080/
-curl -i http://192.168.157.128:8080/not-found.html
+curl -i http://<server ip>:8080/
+curl -i http://<server ip>:8080/not-found.html
 ```
 
 **Kết quả** của lệnh `curl` thứ nhất (phiên bản Python trên máy bạn có thể khác):
@@ -2562,9 +2536,9 @@ Lệnh thứ hai nhận `HTTP/1.0 404 File not found`, kèm một trang HTML bá
 
 ```text
 Serving HTTP on 0.0.0.0 port 8080 (http://0.0.0.0:8080/) ...
-192.168.157.129 - - [26/Nov/2026 09:30:15] "GET / HTTP/1.1" 200 -
-192.168.157.129 - - [26/Nov/2026 09:30:15] code 404, message File not found
-192.168.157.129 - - [26/Nov/2026 09:30:15] "GET /not-found.html HTTP/1.1" 404 -
+<client ip> - - [26/Nov/2026 09:30:15] "GET / HTTP/1.1" 200 -
+<client ip> - - [26/Nov/2026 09:30:15] code 404, message File not found
+<client ip> - - [26/Nov/2026 09:30:15] "GET /not-found.html HTTP/1.1" 404 -
 ```
 
 Ghi lại status code của mỗi request. Để server chạy cho các bước sau.
@@ -2627,8 +2601,8 @@ public class RawHttpClient {
 cd ~/lab/bai5
 code RawHttpClient.java
 javac RawHttpClient.java
-java RawHttpClient 192.168.157.128 8080 /
-java RawHttpClient 192.168.157.128 8080 /not-found.html
+java RawHttpClient <server ip> 8080 /
+java RawHttpClient <server ip> 8080 /not-found.html
 ```
 
 **Kết quả** của lệnh thứ nhất giống hệt output của `curl -i`, vì chương trình in nguyên văn các byte server gửi về:
@@ -2649,7 +2623,7 @@ Chương trình này chỉ dành cho các response nhỏ của server trong lab.
 **Thử thêm:** netcat cũng gửi được một HTTP request "bằng tay":
 
 ```bash
-printf 'GET / HTTP/1.0\r\n\r\n' | nc 192.168.157.128 8080
+printf 'GET / HTTP/1.0\r\n\r\n' | nc <server ip> 8080
 ```
 
 ### Bước 5.3 – Phân tích HTTP bằng tcpdump
@@ -2665,7 +2639,7 @@ cd ~/lab/bai5
 sudo tcpdump -i ens33 -nn -s 0 -w http-MSSV.pcap tcp port 8080
 ```
 
-**[client-1]**: chạy lại `java RawHttpClient 192.168.157.128 8080 /`. Dừng tcpdump bằng `Ctrl+C`, rồi đọc file:
+**[client-1]**: chạy lại `java RawHttpClient <server ip> 8080 /`. Dừng tcpdump bằng `Ctrl+C`, rồi đọc file:
 
 ```bash
 tcpdump -nn -A -r http-MSSV.pcap
@@ -2674,12 +2648,12 @@ tcpdump -nn -A -r http-MSSV.pcap
 **Kết quả** (đã bỏ các dòng ký tự rác của header IP/TCP, chỉ giữ các gói có dữ liệu và các gói FIN):
 
 ```text
-09:30:16.843228 IP 192.168.157.129.49622 > 192.168.157.128.8080: Flags [P.], seq 1:66, ack 1, win 502, options [...], length 65
+09:30:16.843228 IP <client ip>.49622 > <server ip>.8080: Flags [P.], seq 1:66, ack 1, win 502, options [...], length 65
 GET / HTTP/1.1
-Host: 192.168.157.128:8080
+Host: <server ip>:8080
 Connection: close
 
-09:30:16.844813 IP 192.168.157.128.8080 > 192.168.157.129.49622: Flags [P.], seq 1:186, ack 66, win 509, options [...], length 185
+09:30:16.844813 IP <server ip>.8080 > <client ip>.49622: Flags [P.], seq 1:186, ack 66, win 509, options [...], length 185
 HTTP/1.0 200 OK
 Server: SimpleHTTP/0.6 Python/3.12.3
 Date: Thu, 26 Nov 2026 02:30:16 GMT
@@ -2687,10 +2661,10 @@ Content-type: text/html
 Content-Length: 46
 Last-Modified: Thu, 26 Nov 2026 02:29:40 GMT
 
-09:30:16.844870 IP 192.168.157.128.8080 > 192.168.157.129.49622: Flags [P.], seq 186:232, ack 66, win 509, options [...], length 46
+09:30:16.844870 IP <server ip>.8080 > <client ip>.49622: Flags [P.], seq 186:232, ack 66, win 509, options [...], length 46
 <html><body><h1>Socket Lab</h1></body></html>
-09:30:16.844909 IP 192.168.157.128.8080 > 192.168.157.129.49622: Flags [F.], seq 232, ack 66, win 509, options [...], length 0
-09:30:16.845473 IP 192.168.157.129.49622 > 192.168.157.128.8080: Flags [F.], seq 66, ack 233, win 501, options [...], length 0
+09:30:16.844909 IP <server ip>.8080 > <client ip>.49622: Flags [F.], seq 232, ack 66, win 509, options [...], length 0
+09:30:16.845473 IP <client ip>.49622 > <server ip>.8080: Flags [F.], seq 66, ack 233, win 501, options [...], length 0
 ```
 
 - Request 65 byte nằm trọn trong một segment.
@@ -2886,7 +2860,7 @@ java CommandServer
 cd ~/lab/bai5
 code CommandClient.java
 javac CommandClient.java
-java CommandClient 192.168.157.128
+java CommandClient <server ip>
 ```
 
 Thử lần lượt các lệnh trong bảng ở Bước 5.4, thêm `TIME extra`, `ADD 2147483647 1`, `QUIT extra`, `add 1 2`, và một lệnh đúng ngay sau một lệnh sai.
@@ -2923,11 +2897,11 @@ Server: OK 3
 Server: OK BYE
 ```
 
-Cửa sổ server ghi từng lệnh và câu trả lời, ví dụ `[192.168.157.129:38198] ADD 12 8  ->  OK 20`.
+Cửa sổ server ghi từng lệnh và câu trả lời, ví dụ `[<client ip>:38198] ADD 12 8  ->  OK 20`.
 
 **Thử thêm:**
-- **Kiểm tra server bằng netcat:** `nc 192.168.157.128 5000`. Dòng chào hiện ra ngay; gõ `ADD 3 4` nhận `OK 7`.
-- **Client không đọc dòng chào:** dùng EchoClient của Phần 3 (`cd ~/lab/bai3 && java EchoClient 192.168.157.128`) để gửi `ADD 1 2`, rồi `UPPER abc`, rồi `QUIT`:
+- **Kiểm tra server bằng netcat:** `nc <server ip> 5000`. Dòng chào hiện ra ngay; gõ `ADD 3 4` nhận `OK 7`.
+- **Client không đọc dòng chào:** dùng EchoClient của Phần 3 (`cd ~/lab/bai3 && java EchoClient <server ip>`) để gửi `ADD 1 2`, rồi `UPPER abc`, rồi `QUIT`:
 
   ```text
   > ADD 1 2
@@ -3056,9 +3030,9 @@ out.flush();
 **Kiểm thử** từ VM client:
 
 ```bash
-curl -i http://192.168.157.128:8081/
-curl -i http://192.168.157.128:8081/unknown
-curl -i -X POST http://192.168.157.128:8081/
+curl -i http://<server ip>:8081/
+curl -i http://<server ip>:8081/unknown
+curl -i -X POST http://<server ip>:8081/
 ```
 
 Bắt gói bằng tcpdump như Bước 5.3 và so sánh với response của server Python. Đây chỉ là server minh họa: chưa tuân thủ đầy đủ HTTP và chưa đủ an toàn để dùng thật.
@@ -3148,7 +3122,6 @@ Nếu máy ảo có Wireshark, có thể mở file `.pcap` bằng `wireshark tcp
 | Dấu nhắc lệnh vẫn là tên cũ sau khi đổi hostname | Terminal mở từ trước khi đổi | đóng Terminal và mở lại |
 | `sudo: unable to resolve host …` | hostname và dòng `127.0.1.1` trong `/etc/hosts` không khớp | làm lại Bước 0.2 |
 | Không dán được vào Terminal bằng `Ctrl+V` | Terminal dùng phím khác | dùng `Ctrl+Shift+V` (copy là `Ctrl+Shift+C`) |
-| `code: command not found` | máy ảo chưa có VS Code | báo giảng viên; tạm soạn code bằng `nano` (Bước 0.6) |
 | `javac` báo lỗi dù đã dán đúng code, hoặc `error: file not found: X.java` | chưa lưu file trong VS Code (tab có dấu ●) | nhấn `Ctrl+S` rồi biên dịch lại |
 | `javac: command not found` | máy ảo chưa có JDK | báo giảng viên |
 | `java` chạy được nhưng không có `javac` | máy mới có JRE, chưa có JDK | báo giảng viên |
